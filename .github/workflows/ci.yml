@@ -41,12 +41,14 @@ jobs:
 
       - name: Configure backend env
         run: |
-          cat > backend/.env << 'EOF'
+          JWT_SECRET_VALUE="ci-jwt-$(date +%s)-$(openssl rand -hex 8)"
+          VERIFY_TOKEN_VALUE="ci-webhook-$(date +%s)-$(openssl rand -hex 8)"
+          cat > backend/.env << EOF
           DATABASE_URL=postgresql://postgres:postgres@localhost:5432/pointhed?schema=public
-          JWT_SECRET=ci-secret-key
+          JWT_SECRET=${JWT_SECRET_VALUE}
           PORT=3001
           FRONTEND_URL=http://localhost:5173
-          WHATSAPP_VERIFY_TOKEN=ci-webhook-token
+          WHATSAPP_VERIFY_TOKEN=${VERIFY_TOKEN_VALUE}
           EOF
 
       - name: Prepare database
@@ -71,7 +73,7 @@ jobs:
         env:
           VITE_API_URL: http://127.0.0.1:3001/api/v1
           VITE_SUPABASE_URL: https://ci-placeholder.supabase.co
-          VITE_SUPABASE_ANON_KEY: ci-placeholder-anon-key
+          VITE_SUPABASE_ANON_KEY: ci_public_env_placeholder_value
         run: npm run dev -- --host 127.0.0.1 --port 5173 > frontend-ci.log 2>&1 &
 
       - name: Wait for services

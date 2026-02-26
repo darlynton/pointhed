@@ -1210,7 +1210,7 @@ export function SettingsTab() {
                 <div className="flex gap-2">
                   <Input
                     type="password"
-                    value="sk_live_••••••••••••••••••••"
+                    value="example_key_hidden"
                     readOnly
                     className="font-mono"
                   />
