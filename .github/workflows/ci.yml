@@ -1,0 +1,88 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  quality-and-smoke:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: pointhed
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d pointhed"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install root deps
+        run: npm ci
+
+      - name: Install backend deps
+        run: npm --prefix backend ci
+
+      - name: Configure backend env
+        run: |
+          cat > backend/.env << 'EOF'
+          DATABASE_URL=postgresql://postgres:postgres@localhost:5432/pointhed?schema=public
+          JWT_SECRET=ci-secret-key
+          PORT=3001
+          FRONTEND_URL=http://localhost:5173
+          WHATSAPP_VERIFY_TOKEN=ci-webhook-token
+          EOF
+
+      - name: Prepare database
+        run: |
+          npm --prefix backend run db:generate
+          npm --prefix backend run db:migrate:prod || true
+          npm --prefix backend run db:seed
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+
+      - name: Start backend
+        run: npm --prefix backend run start > backend-ci.log 2>&1 &
+
+      - name: Start frontend
+        run: npm run dev -- --host 127.0.0.1 --port 5173 > frontend-ci.log 2>&1 &
+
+      - name: Wait for services
+        run: |
+          for i in {1..60}; do
+            curl -sf http://127.0.0.1:3001/health && break
+            sleep 2
+          done
+          for i in {1..60}; do
+            curl -sf http://127.0.0.1:5173 && break
+            sleep 2
+          done
+
+      - name: Run smoke tests
+        env:
+          CYPRESS_baseUrl: http://127.0.0.1:5173
+          CYPRESS_backendUrl: http://127.0.0.1:3001
+        run: npm run test

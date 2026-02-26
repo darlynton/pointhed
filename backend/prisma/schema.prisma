@@ -1,0 +1,658 @@
+// Multi-tenant Loyalty Platform - Prisma Schema
+// Aligned with DATABASE_SCHEMA.md
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// PLATFORM-LEVEL TABLES (No tenant_id)
+// ============================================================================
+
+model SubscriptionPlan {
+  id             String   @id @default(uuid()) @db.Uuid
+  name           String   @db.VarChar(100)
+  slug           String   @unique @db.VarChar(50)
+  description    String?  @db.Text
+  priceNgn       Int      @map("price_ngn") // in kobo
+  billingPeriod  String   @map("billing_period") @db.VarChar(20)
+  features       Json     @default("{}")
+  isActive       Boolean  @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  
+  tenants        Tenant[]
+
+  @@map("subscription_plans")
+}
+
+model PlatformAdmin {
+  id          String    @id @default(uuid()) @db.Uuid
+  email       String    @unique @db.VarChar(255)
+  passwordHash String   @map("password_hash") @db.VarChar(255)
+  fullName    String?   @map("full_name") @db.VarChar(255)
+  role        String    @default("admin") @db.VarChar(50)
+  isActive    Boolean   @default(true) @map("is_active")
+  lastLoginAt DateTime? @map("last_login_at") @db.Timestamptz(6)
+  supabaseUserId String? @map("supabase_user_id") @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([email])
+  @@index([supabaseUserId])
+  @@map("platform_admins")
+}
+
+// ============================================================================
+// TENANT MANAGEMENT
+// ============================================================================
+
+model Tenant {
+  id                    String    @id @default(uuid()) @db.Uuid
+  businessName          String    @map("business_name") @db.VarChar(255)
+  slug                  String    @unique @db.VarChar(100)
+  vendorCode            String    @unique @map("vendor_code") @db.VarChar(20)
+  phoneNumber           String    @unique @map("phone_number") @db.VarChar(20)
+  email                 String?   @db.VarChar(255)
+  address               String?   @db.Text
+  
+  subscriptionPlanId    String?   @map("subscription_plan_id") @db.Uuid
+  subscriptionStatus    String    @default("trial") @map("subscription_status") @db.VarChar(50)
+  trialEndsAt           DateTime? @map("trial_ends_at") @db.Timestamptz(6)
+  subscriptionStartsAt  DateTime? @map("subscription_starts_at") @db.Timestamptz(6)
+  subscriptionEndsAt    DateTime? @map("subscription_ends_at") @db.Timestamptz(6)
+  
+  settings              Json      @default("{}")
+  branding              Json      @default("{}")
+  whatsappConfig        Json      @default("{}") @map("whatsapp_config")
+  homeCurrency          String?   @map("home_currency") @db.Char(3)
+  timezone              String?   @map("timezone") @db.VarChar(100)
+  monthlyUsage          Json      @default("{}") @map("monthly_usage")
+  
+  isActive              Boolean   @default(true) @map("is_active")
+  onboardingCompleted   Boolean   @default(false) @map("onboarding_completed")
+  verifiedAt            DateTime? @map("verified_at") @db.Timestamptz(6)
+  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt             DateTime? @map("deleted_at") @db.Timestamptz(6)
+  
+  subscriptionPlan      SubscriptionPlan? @relation(fields: [subscriptionPlanId], references: [id])
+  
+  vendorUsers           VendorUser[]
+  customers             Customer[]
+  pointsTransactions    PointsTransaction[]
+  customerPointsBalance CustomerPointsBalance[]
+  rewards               Reward[]
+  rewardRedemptions     RewardRedemption[]
+  purchases             Purchase[]
+  purchaseClaims        PurchaseClaim[]
+  pointsRules           PointsRule[]
+  campaigns             Campaign[]
+  whatsappMessages      WhatsAppMessage[]
+  broadcasts            Broadcast[]
+  dailyMetrics          DailyMetric[]
+  auditLogs             AuditLog[]
+  tenantInvoices        TenantInvoice[]
+  transactions          Transaction[]
+  refreshTokens         RefreshToken[]
+
+  @@index([vendorCode])
+  @@index([phoneNumber])
+  @@index([slug])
+  @@index([subscriptionStatus])
+  @@map("tenants")
+}
+
+// ============================================================================
+// FINANCIAL MODELS
+// ============================================================================
+
+model Transaction {
+  id            String   @id @default(uuid()) @db.Uuid
+  vendorId      String   @map("vendor_id") @db.Uuid
+  customerId    String?  @map("customer_id") @db.Uuid
+  amountLocal   Decimal  @map("amount_local") @db.Decimal(20,8)
+  currencyCode  String   @map("currency_code") @db.Char(3)
+  amountBase    Decimal  @map("amount_base") @db.Decimal(20,8) // normalized to base currency (e.g., GBP)
+  exchangeRate  Decimal  @map("exchange_rate") @db.Decimal(30,12) // rate used at time of sale
+  timestampUtc  DateTime @map("timestamp_utc") @db.Timestamptz(6)
+  metadata      Json     @default("{}")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  vendor        Tenant   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@index([vendorId])
+  @@index([customerId])
+  @@map("transactions")
+}
+
+model ExchangeRate {
+  id           String   @id @default(uuid()) @db.Uuid
+  fromCurrency String   @map("from_currency") @db.Char(3)
+  toCurrency   String   @map("to_currency") @db.Char(3)
+  rate         Decimal  @db.Decimal(30,12)
+  retrievedAt  DateTime @map("retrieved_at") @db.Timestamptz(6)
+  provider     String?  @db.VarChar(100)
+  metadata     Json     @default("{}")
+
+  @@unique([fromCurrency, toCurrency, retrievedAt])
+  @@index([fromCurrency, toCurrency])
+  @@map("exchange_rates")
+}
+
+model TenantInvoice {
+  id                 String    @id @default(uuid()) @db.Uuid
+  tenantId           String    @map("tenant_id") @db.Uuid
+  invoiceNumber      String    @unique @map("invoice_number") @db.VarChar(50)
+  amountNgn          Int       @map("amount_ngn")
+  taxAmountNgn       Int       @default(0) @map("tax_amount_ngn")
+  totalAmountNgn     Int       @map("total_amount_ngn")
+  billingPeriodStart DateTime  @map("billing_period_start") @db.Date
+  billingPeriodEnd   DateTime  @map("billing_period_end") @db.Date
+  status             String    @default("pending") @db.VarChar(50)
+  paymentMethod      String?   @map("payment_method") @db.VarChar(50)
+  paymentReference   String?   @map("payment_reference") @db.VarChar(255)
+  paidAt             DateTime? @map("paid_at") @db.Timestamptz(6)
+  dueDate            DateTime? @map("due_date") @db.Date
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  
+  tenant             Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([status])
+  @@map("tenant_invoices")
+}
+
+// ============================================================================
+// VENDOR USERS & STAFF
+// ============================================================================
+
+model VendorUser {
+  id            String    @id @default(uuid()) @db.Uuid
+  tenantId      String    @map("tenant_id") @db.Uuid
+  email         String    @db.VarChar(255)
+  passwordHash  String    @map("password_hash") @db.VarChar(255)
+  supabaseUserId String?  @map("supabase_user_id") @db.Uuid
+  phoneNumber   String?   @map("phone_number") @db.VarChar(20)
+  fullName      String    @map("full_name") @db.VarChar(255)
+  role          String    @default("staff") @db.VarChar(50)
+  staffPin      String?   @map("staff_pin") @db.VarChar(6)
+  pinEnabled    Boolean   @default(false) @map("pin_enabled")
+  permissions   Json      @default("{}")
+  isActive      Boolean   @default(true) @map("is_active")
+  lastLoginAt   DateTime? @map("last_login_at") @db.Timestamptz(6)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  
+  tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  purchases          Purchase[]
+  rewardRedemptions  RewardRedemption[]
+  broadcasts         Broadcast[]
+
+  @@unique([tenantId, email])
+  @@index([supabaseUserId])
+  @@index([tenantId])
+  @@index([email])
+  @@map("vendor_users")
+}
+
+// ============================================================================
+// CUSTOMERS
+// ============================================================================
+
+model Customer {
+  id                String    @id @default(uuid()) @db.Uuid
+  tenantId          String    @map("tenant_id") @db.Uuid
+  phoneNumber       String    @map("phone_number") @db.VarChar(20)
+  whatsappName      String?   @map("whatsapp_name") @db.VarChar(255)
+  firstName         String?   @map("first_name") @db.VarChar(255)
+  lastName          String?   @map("last_name") @db.VarChar(255)
+  email             String?   @db.VarChar(255)
+  loyaltyStatus     String    @default("active") @map("loyalty_status") @db.VarChar(50)
+  optedIn           Boolean   @default(true) @map("opted_in")
+  optedInAt         DateTime? @map("opted_in_at") @db.Timestamptz(6)
+  optedOutAt        DateTime? @map("opted_out_at") @db.Timestamptz(6)
+  totalPurchases    Int       @default(0) @map("total_purchases")
+  totalSpentNgn     Int       @default(0) @map("total_spent_ngn")
+  lastPurchaseAt    DateTime? @map("last_purchase_at") @db.Timestamptz(6)
+  conversationState Json      @default("{}") @map("conversation_state")
+  tags              Json      @default("[]")
+  notes             String?   @db.Text
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt         DateTime? @map("deleted_at") @db.Timestamptz(6)
+  
+  tenant                 Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  pointsTransactions     PointsTransaction[]
+  pointsBalance          CustomerPointsBalance?
+  rewardRedemptions      RewardRedemption[]
+  purchases              Purchase[]
+  purchaseClaims         PurchaseClaim[]
+  whatsappMessages       WhatsAppMessage[]
+
+  @@index([tenantId])
+  @@index([phoneNumber])
+  @@index([tenantId, phoneNumber])
+  @@index([tenantId, loyaltyStatus])
+  @@index([tenantId, lastPurchaseAt(sort: Desc)])
+  @@map("customers")
+}
+
+// ============================================================================
+// POINTS SYSTEM
+// ============================================================================
+
+model PointsTransaction {
+  id                   String    @id @default(uuid()) @db.Uuid
+  tenantId             String    @map("tenant_id") @db.Uuid
+  customerId           String    @map("customer_id") @db.Uuid
+  transactionType      String    @map("transaction_type") @db.VarChar(50)
+  points               Int
+  purchaseId           String?   @map("purchase_id") @db.Uuid
+  rewardRedemptionId   String?   @map("reward_redemption_id") @db.Uuid
+  campaignId           String?   @map("campaign_id") @db.Uuid
+  description          String?   @db.Text
+  metadata             Json      @default("{}")
+  expiresAt            DateTime? @map("expires_at") @db.Timestamptz(6)
+  expired              Boolean   @default(false)
+  createdByUserId      String?   @map("created_by_user_id") @db.Uuid
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  
+  tenant               Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer             Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([customerId])
+  @@index([transactionType])
+  @@index([expiresAt])
+  @@map("points_transactions")
+}
+
+model CustomerPointsBalance {
+  id                   String    @id @default(uuid()) @db.Uuid
+  tenantId             String    @map("tenant_id") @db.Uuid
+  customerId           String    @unique @map("customer_id") @db.Uuid
+  totalPointsEarned    Int       @default(0) @map("total_points_earned")
+  totalPointsRedeemed  Int       @default(0) @map("total_points_redeemed")
+  totalPointsExpired   Int       @default(0) @map("total_points_expired")
+  currentBalance       Int       @default(0) @map("current_balance")
+  lastEarnedAt         DateTime? @map("last_earned_at") @db.Timestamptz(6)
+  lastRedeemedAt       DateTime? @map("last_redeemed_at") @db.Timestamptz(6)
+  updatedAt            DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  
+  tenant               Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer             Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, customerId])
+  @@index([tenantId])
+  @@index([customerId])
+  @@index([tenantId, currentBalance(sort: Desc)])
+  @@map("customer_points_balance")
+}
+
+// ============================================================================
+// REWARDS CATALOG
+// ============================================================================
+
+model Reward {
+  id                         String    @id @default(uuid()) @db.Uuid
+  tenantId                   String    @map("tenant_id") @db.Uuid
+  name                       String    @db.VarChar(255)
+  description                String?   @db.Text
+  pointsRequired             Int       @map("points_required")
+  monetaryValueNgn           Int?      @map("monetary_value_ngn")
+  isActive                   Boolean   @default(true) @map("is_active")
+  stockQuantity              Int?      @map("stock_quantity")
+  maxRedemptionsPerCustomer  Int?      @map("max_redemptions_per_customer")
+  validFrom                  DateTime? @map("valid_from") @db.Timestamptz(6)
+  validUntil                 DateTime? @map("valid_until") @db.Timestamptz(6)
+  imageUrl                   String?   @map("image_url") @db.Text
+  termsAndConditions         String?   @map("terms_and_conditions") @db.Text
+  category                   String?   @db.VarChar(100)
+  totalRedemptions           Int       @default(0) @map("total_redemptions")
+  createdAt                  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                  DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt                  DateTime? @map("deleted_at") @db.Timestamptz(6)
+  
+  tenant                     Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  redemptions                RewardRedemption[]
+
+  @@index([tenantId])
+  @@index([tenantId, isActive])
+  @@index([tenantId, pointsRequired])
+  @@map("rewards")
+}
+
+model RewardRedemption {
+  id                 String    @id @default(uuid()) @db.Uuid
+  tenantId           String    @map("tenant_id") @db.Uuid
+  customerId         String    @map("customer_id") @db.Uuid
+  rewardId           String    @map("reward_id") @db.Uuid
+  idempotencyKey     String?   @unique @map("idempotency_key") @db.VarChar(255)
+  pointsDeducted     Int       @map("points_deducted")
+  status             String    @default("pending") @db.VarChar(50)
+  redemptionCode     String    @unique @map("redemption_code") @db.VarChar(20)
+  verifiedByUserId   String?   @map("verified_by_user_id") @db.Uuid
+  verifiedAt         DateTime? @map("verified_at") @db.Timestamptz(6)
+  fulfilledAt        DateTime? @map("fulfilled_at") @db.Timestamptz(6)
+  fulfilmentNotes    String?   @map("fulfilment_notes") @db.Text
+  cancelledAt        DateTime? @map("cancelled_at") @db.Timestamptz(6)
+  cancellationReason String?   @map("cancellation_reason") @db.Text
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  
+  tenant             Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer           Customer   @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  reward             Reward     @relation(fields: [rewardId], references: [id], onDelete: Restrict)
+  verifiedByUser     VendorUser? @relation(fields: [verifiedByUserId], references: [id])
+
+  @@index([tenantId])
+  @@index([customerId])
+  @@index([rewardId])
+  @@index([status])
+  @@index([redemptionCode])
+  @@map("reward_redemptions")
+}
+
+// ============================================================================
+// AUTH TOKENS (Refresh Tokens)
+// ============================================================================
+
+model RefreshToken {
+  id              String    @id @default(uuid()) @db.Uuid
+  userId          String    @map("user_id") @db.Uuid
+  userType        String    @map("user_type") @db.VarChar(50)
+  tenantId        String?   @map("tenant_id") @db.Uuid
+  tokenJti        String    @unique @map("token_jti") @db.VarChar(128)
+  tokenHash       String    @map("token_hash") @db.VarChar(255)
+  ipAddress       String?   @map("ip_address") @db.VarChar(255)
+  userAgent       String?   @map("user_agent") @db.VarChar(512)
+  expiresAt       DateTime  @map("expires_at") @db.Timestamptz(6)
+  revokedAt       DateTime? @map("revoked_at") @db.Timestamptz(6)
+  replacedByTokenId String? @map("replaced_by_token_id") @db.Uuid
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([userType])
+  @@map("refresh_tokens")
+}
+
+// ============================================================================
+// PURCHASE TRACKING
+// ============================================================================
+
+model Purchase {
+  id                String    @id @default(uuid()) @db.Uuid
+  tenantId          String    @map("tenant_id") @db.Uuid
+  customerId        String    @map("customer_id") @db.Uuid
+  amountNgn         Int       @map("amount_ngn")
+  quantity          Int       @default(1)
+  productName       String?   @map("product_name") @db.VarChar(255)
+  productSku        String?   @map("product_sku") @db.VarChar(100)
+  receiptUrl        String?   @map("receipt_url") @db.Text
+  receiptVerified   Boolean   @default(false) @map("receipt_verified")
+  source            String    @default("whatsapp") @db.VarChar(50)
+  loggedByUserId    String?   @map("logged_by_user_id") @db.Uuid
+  loggedVia         String?   @map("logged_via") @db.VarChar(50)
+  pointsAwarded     Int       @default(0) @map("points_awarded")
+  metadata          Json      @default("{}")
+  notes             String?   @db.Text
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  
+  tenant            Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer          Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  loggedByUser      VendorUser? @relation(fields: [loggedByUserId], references: [id])
+
+  @@index([tenantId])
+  @@index([customerId])
+  @@index([tenantId, createdAt(sort: Desc)])
+  @@map("purchases")
+}
+
+model PurchaseClaim {
+  id                String    @id @default(uuid()) @db.Uuid
+  tenantId          String    @map("tenant_id") @db.Uuid
+  customerId        String    @map("customer_id") @db.Uuid
+  phoneNumber       String    @map("phone_number") @db.VarChar(20)
+  amountNgn         Float     @map("amount_ngn")
+  purchaseDate      DateTime  @map("purchase_date") @db.Timestamptz(6)
+  channel           String?   @default("physical_store") @db.VarChar(50) // physical_store, instagram, whatsapp_order
+  receiptUrl        String?   @map("receipt_url") @db.Text
+  description       String?   @db.Text
+  status            String    @default("pending") @db.VarChar(50) // pending, approved, rejected
+  rejectionReason   String?   @map("rejection_reason") @db.Text
+  approvedByUserId  String?   @map("approved_by_user_id") @db.Uuid
+  approvedAt        DateTime? @map("approved_at") @db.Timestamptz(6)
+  purchaseId        String?   @map("purchase_id") @db.Uuid // Links to Purchase after approval
+  metadata          Json      @default("{}")
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  expiresAt         DateTime? @map("expires_at") @db.Timestamptz(6)
+  
+  tenant            Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer          Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([customerId])
+  @@index([status])
+  @@index([createdAt(sort: Desc)])
+  @@index([tenantId, status])
+  @@map("purchase_claims")
+}
+
+// ============================================================================
+// LOYALTY RULES & CAMPAIGNS
+// ============================================================================
+
+model PointsRule {
+  id          String    @id @default(uuid()) @db.Uuid
+  tenantId    String    @map("tenant_id") @db.Uuid
+  name        String    @db.VarChar(255)
+  description String?   @db.Text
+  ruleType    String    @map("rule_type") @db.VarChar(50)
+  config      Json
+  priority    Int       @default(0)
+  conditions  Json      @default("{}")
+  isActive    Boolean   @default(true) @map("is_active")
+  validFrom   DateTime? @map("valid_from") @db.Timestamptz(6)
+  validUntil  DateTime? @map("valid_until") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(6)
+  
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([tenantId, isActive])
+  @@map("points_rules")
+}
+
+model Campaign {
+  id                 String    @id @default(uuid()) @db.Uuid
+  tenantId           String    @map("tenant_id") @db.Uuid
+  name               String    @db.VarChar(255)
+  description        String?   @db.Text
+  campaignType       String    @map("campaign_type") @db.VarChar(50)
+  config             Json
+  targetSegment      Json      @default("{}") @map("target_segment")
+  startsAt           DateTime  @map("starts_at") @db.Timestamptz(6)
+  endsAt             DateTime  @map("ends_at") @db.Timestamptz(6)
+  status             String    @default("draft") @db.VarChar(50)
+  totalParticipants  Int       @default(0) @map("total_participants")
+  totalConversions   Int       @default(0) @map("total_conversions")
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  
+  tenant             Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@index([startsAt, endsAt])
+  @@map("campaigns")
+}
+
+// ============================================================================
+// NOTIFICATIONS & MESSAGES
+// ============================================================================
+
+model WhatsAppMessage {
+  id                 String    @id @default(uuid()) @db.Uuid
+  tenantId           String    @map("tenant_id") @db.Uuid
+  customerId         String?   @map("customer_id") @db.Uuid
+  direction          String    @db.VarChar(20)
+  messageType        String    @map("message_type") @db.VarChar(50)
+  messageBody        String?   @map("message_body") @db.Text
+  mediaUrl           String?   @map("media_url") @db.Text
+  whatsappMessageId  String?   @unique @map("whatsapp_message_id") @db.VarChar(255)
+  whatsappStatus     String?   @map("whatsapp_status") @db.VarChar(50)
+  conversationId     String?   @map("conversation_id") @db.VarChar(255)
+  triggeredBy        String?   @map("triggered_by") @db.VarChar(100)
+  errorCode          String?   @map("error_code") @db.VarChar(50)
+  errorMessage       String?   @map("error_message") @db.Text
+  deliveredAt        DateTime? @map("delivered_at") @db.Timestamptz(6)
+  readAt             DateTime? @map("read_at") @db.Timestamptz(6)
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  
+  tenant             Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer           Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([customerId])
+  @@index([direction])
+  @@index([createdAt(sort: Desc)])
+  @@index([whatsappMessageId])
+  @@map("whatsapp_messages")
+}
+
+model Broadcast {
+  id               String    @id @default(uuid()) @db.Uuid
+  tenantId         String    @map("tenant_id") @db.Uuid
+  name             String    @db.VarChar(255)
+  messageContent   String    @map("message_content") @db.Text
+  targetSegment    Json      @default("{}") @map("target_segment")
+  totalRecipients  Int       @default(0) @map("total_recipients")
+  scheduledAt      DateTime? @map("scheduled_at") @db.Timestamptz(6)
+  status           String    @default("draft") @db.VarChar(50)
+  sentCount        Int       @default(0) @map("sent_count")
+  deliveredCount   Int       @default(0) @map("delivered_count")
+  readCount        Int       @default(0) @map("read_count")
+  failedCount      Int       @default(0) @map("failed_count")
+  startedAt        DateTime? @map("started_at") @db.Timestamptz(6)
+  completedAt      DateTime? @map("completed_at") @db.Timestamptz(6)
+  createdByUserId  String?   @map("created_by_user_id") @db.Uuid
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  
+  tenant           Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdByUser    VendorUser? @relation(fields: [createdByUserId], references: [id])
+
+  @@index([tenantId])
+  @@index([status])
+  @@map("broadcasts")
+}
+
+// ============================================================================
+// ANALYTICS & REPORTING
+// ============================================================================
+
+model DailyMetric {
+  id                   String   @id @default(uuid()) @db.Uuid
+  tenantId             String   @map("tenant_id") @db.Uuid
+  metricDate           DateTime @map("metric_date") @db.Date
+  newCustomers         Int      @default(0) @map("new_customers")
+  activeCustomers      Int      @default(0) @map("active_customers")
+  churnedCustomers     Int      @default(0) @map("churned_customers")
+  totalPurchases       Int      @default(0) @map("total_purchases")
+  totalRevenueNgn      Int      @default(0) @map("total_revenue_ngn")
+  averageOrderValueNgn Int      @default(0) @map("average_order_value_ngn")
+  pointsEarned         Int      @default(0) @map("points_earned")
+  pointsRedeemed       Int      @default(0) @map("points_redeemed")
+  pointsExpired        Int      @default(0) @map("points_expired")
+  rewardsRedeemed      Int      @default(0) @map("rewards_redeemed")
+  messagesReceived     Int      @default(0) @map("messages_received")
+  messagesSent         Int      @default(0) @map("messages_sent")
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  
+  tenant               Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, metricDate])
+  @@index([tenantId])
+  @@index([metricDate(sort: Desc)])
+  @@map("daily_metrics")
+}
+
+// ============================================================================
+// SYSTEM TABLES
+// ============================================================================
+
+model AuditLog {
+  id          String    @id @default(uuid()) @db.Uuid
+  tenantId    String?   @map("tenant_id") @db.Uuid
+  userId      String?   @map("user_id") @db.Uuid
+  userType    String?   @map("user_type") @db.VarChar(50)
+  action      String    @db.VarChar(255)
+  entityType  String?   @map("entity_type") @db.VarChar(100)
+  entityId    String?   @map("entity_id") @db.Uuid
+  changes     Json      @default("{}")
+  metadata    Json      @default("{}")
+  ipAddress   String?   @map("ip_address") @db.VarChar(45)
+  userAgent   String?   @map("user_agent") @db.Text
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  
+  tenant      Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([action])
+  @@index([createdAt(sort: Desc)])
+  @@map("audit_logs")
+}
+
+// ============================================================================
+// WAITLIST (Platform-level, no tenant_id)
+// ============================================================================
+
+model Waitlist {
+  id        String   @id @default(uuid()) @db.Uuid
+  email     String   @unique @db.VarChar(255)
+  source    String   @default("landing_page") @db.VarChar(100)
+  status    String   @default("pending") @db.VarChar(50) // pending, contacted, onboarded
+  metadata  Json     @default("{}")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([email])
+  @@index([status])
+  @@index([createdAt(sort: Desc)])
+  @@map("waitlist")
+}
+
+model WhatsAppLead {
+  id           String   @id @default(uuid()) @db.Uuid
+  phoneNumber  String   @map("phone_number") @db.VarChar(20) // formatted: +447404938935
+  countryCode  String   @map("country_code") @db.VarChar(5) // e.g., +44
+  rawNumber    String   @map("raw_number") @db.VarChar(20) // original input: 7404938935
+  source       String   @default("landing_page") @db.VarChar(100)
+  status       String   @default("sent") @db.VarChar(50) // sent, delivered, failed, read
+  messageId    String?  @map("message_id") @db.VarChar(255) // WhatsApp message ID
+  metadata     Json     @default("{}")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([phoneNumber])
+  @@index([status])
+  @@index([createdAt(sort: Desc)])
+  @@map("whatsapp_leads")
+}

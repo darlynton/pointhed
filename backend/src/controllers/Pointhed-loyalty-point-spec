@@ -1,0 +1,170 @@
+Pointhed Loyalty Points Specification (v1)
+
+1. Core Principles
+	•	Earn rate and burn rate are independent
+	•	Earn rate is global and fixed
+	•	Burn rate is vendor-configurable
+	•	Points are always integers
+	•	Currency rounding happens at redemption, not earning
+
+⸻
+
+2. Supported Currencies
+	•	GBP
+	•	USD
+	•	EUR
+	•	NGN
+
+⸻
+
+3. Earn Rate (Fixed, Non-Configurable)
+
+Earn Units
+Currency    Earn Unit    Definition
+GBP         1            £1 = 1 point
+USD         1            $1 = 1 point
+EUR         1            €1 = 1 point
+NGN         1000         ₦1000 = 1 point
+
+Earn Formula
+points_earned = floor(transaction_amount / earn_unit)
+
+Examples
+	•	£27.99 → 27 points
+	•	$10.50 → 10 points
+	•	₦9,500 → 9 points
+⚠️ No decimals. No rounding up.
+
+4. Burn Rate (Vendor-Configurable)
+
+Definition
+
+Burn rate defines the monetary value of one point.
+
+Burn Rate Constraints
+	•	Minimum: 0.01 (1%)
+	•	Maximum: configurable (recommended cap: 0.05 / 5%)
+	•	Default: 0.01
+
+Point Value Formula
+point_value = earn_unit × burn_rate
+
+Examples (1% burn rate)
+    •	GBP: 1 point = £0.01
+    •	USD: 1 point = $0.01
+    •	EUR: 1 point = €0.01
+    •	NGN: 1 point = ₦10
+
+Examples (2% burn rate)
+    •	GBP: 1 point = £0.02
+    •	USD: 1 point = $0.02
+    •	EUR: 1 point = €0.02
+    •	NGN: 1 point = ₦20
+
+
+5. Reward Redemption Logic
+
+Reward Monetary Value
+reward_value = points_redeemed × point_value
+
+Points Required for Target Reward
+points_required = ceil(target_reward_value / point_value)
+
+Examples
+
+NGN (1% burn rate)
+	•	Target reward: ₦1,000
+	•	Point value: ₦10
+	•	Points required: 100
+
+GBP (1% burn rate)
+	•	Target reward: £10
+	•	Point value: £0.01
+	•	Points required: 1000
+
+
+6. Vendor Generosity Rules
+	•	Vendor generosity only affects burn rate
+	•	Earn rate must never change
+	•	Existing points automatically gain higher value if burn rate increases
+	•	Burn rate changes apply prospectively (recommended)
+
+⸻
+
+7. Points Balance Rules
+	•	Points balance is stored as integer
+	•	Negative balances are not allowed
+	•	Points deduction must be atomic
+	•	Redemption fails if balance < points_required
+
+⸻
+
+8. Rounding Rules
+	•	Earning: floor
+	•	Redemption target: ceil
+	•	Display values: round to currency minor units (e.g. 2dp for GBP)
+
+9. Example End-to-End Flow
+
+Vendor settings
+	•	Currency: NGN
+	•	Burn rate: 1%
+
+Transaction
+	•	Spend: ₦100,000
+	•	Earned: 100 pts
+
+Redemption
+	•	Reward: ₦1,000
+	•	Required: 100 pts
+	•	Balance after: balance - 100
+
+10. Prohibited Logic (Hard Rules)
+
+❌ Earn rate must NOT depend on burn rate
+❌ Burn rate must NOT affect points earned
+❌ Percentages must NOT be shown to customers
+❌ Currency conversion must NOT occur inside points logic
+
+
+
+Introduce Minimum Redeemable Value (MRV)
+
+This is currency-based, not points-based.
+
+Recommended defaults ( tested patterns)
+
+Currency    Minimum Reward Value
+GBP         £5
+USD         $5
+EUR         €5
+NGN         ₦500
+
+reward_value >= minimum_reward_value
+
+Example (NGN, 1% burn rate)
+	•	Point value = ₦10
+	•	Minimum reward = ₦500
+	•	Minimum points required:
+    ceil(500 / 10) = 50 points
+
+Customer cannot redeem anything below 50 points.
+
+
+
+Minimum Reward Value
+	•	Each currency has a platform-defined minimum redeemable value
+	•	Rewards must meet or exceed this value to be redeemable
+	•	Vendors may increase but not reduce this minimum
+	•	The rule applies only to redemptions, not point grants
+
+
+
+Welcome bonus defaults
+    •	GBP: 10 point
+    •	USD: 10 point
+    •	EUR: 10 point
+    •	NGN: 10 point
+
+
+
