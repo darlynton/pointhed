@@ -28,11 +28,12 @@ This is a **production-ready** cloud-based system that enables any vendor to cre
 
 ```
 pointhed/
-├── 📄 ARCHITECTURE.md          # Complete system architecture & design
-├── 📄 DATABASE_SCHEMA.md       # Full PostgreSQL schema (20+ tables)
-├── 📄 API_ENDPOINTS.md         # REST API specification (80+ endpoints)
-├── 📄 WHATSAPP_FLOWS.md        # 12 conversation flows with state machine
-├── 📄 IMPLEMENTATION_GUIDE.md  # Step-by-step build instructions
+├── docs/
+│   ├── 📄 ARCHITECTURE.md          # Complete system architecture & design
+│   ├── 📄 DATABASE_SCHEMA.md       # Full PostgreSQL schema (20+ tables)
+│   ├── 📄 API_ENDPOINTS.md         # REST API specification (80+ endpoints)
+│   ├── 📄 WHATSAPP_FLOWS.md        # 12 conversation flows with state machine
+│   └── 📄 IMPLEMENTATION_GUIDE.md  # Step-by-step build instructions
 ├── 📄 README.md                # This file
 │
 ├── src/                        # React frontend (Vendor Portal)
@@ -94,7 +95,7 @@ This repository contains the **complete vendor portal UI** built with React + Ta
 
 ### Option 2: Build Complete Backend
 
-Follow **IMPLEMENTATION_GUIDE.md** for step-by-step backend setup:
+Follow **docs/IMPLEMENTATION_GUIDE.md** for step-by-step backend setup:
 
 ```bash
 # 1. Setup
@@ -124,11 +125,11 @@ ngrok http 3001
 
 | Document | Description |
 |----------|-------------|
-| **[ARCHITECTURE.md](ARCHITECTURE.md)** | Complete system architecture, tech stack recommendations, scalability strategy, deployment options, cost estimates |
-| **[DATABASE_SCHEMA.md](DATABASE_SCHEMA.md)** | Full PostgreSQL schema with 20+ tables, indexes, triggers, functions, and Row-Level Security policies |
-| **[API_ENDPOINTS.md](API_ENDPOINTS.md)** | REST API specification with 80+ endpoints, request/response examples, authentication, error handling |
-| **[WHATSAPP_FLOWS.md](WHATSAPP_FLOWS.md)** | 12 detailed conversation flows, state machine logic, message routing, NLP intent detection |
-| **[IMPLEMENTATION_GUIDE.md](IMPLEMENTATION_GUIDE.md)** | Code snippets, deployment guides, testing strategy, security checklist, monitoring setup |
+| **[ARCHITECTURE.md](docs/ARCHITECTURE.md)** | Complete system architecture, tech stack recommendations, scalability strategy, deployment options, cost estimates |
+| **[DATABASE_SCHEMA.md](docs/DATABASE_SCHEMA.md)** | Full PostgreSQL schema with 20+ tables, indexes, triggers, functions, and Row-Level Security policies |
+| **[API_ENDPOINTS.md](docs/API_ENDPOINTS.md)** | REST API specification with 80+ endpoints, request/response examples, authentication, error handling |
+| **[WHATSAPP_FLOWS.md](docs/WHATSAPP_FLOWS.md)** | 12 detailed conversation flows, state machine logic, message routing, NLP intent detection |
+| **[IMPLEMENTATION_GUIDE.md](docs/IMPLEMENTATION_GUIDE.md)** | Code snippets, deployment guides, testing strategy, security checklist, monitoring setup |
 
 ---
 
@@ -194,7 +195,7 @@ ngrok http 3001
 
 **Every table has `tenant_id` for complete data isolation**
 
-See **DATABASE_SCHEMA.md** for complete schema with all indexes, triggers, and functions.
+See **docs/DATABASE_SCHEMA.md** for complete schema with all indexes, triggers, and functions.
 
 ---
 
@@ -236,7 +237,7 @@ GET    /api/v1/webhooks/whatsapp  # Verification
 POST   /api/v1/webhooks/whatsapp  # Message handler
 ```
 
-See **API_ENDPOINTS.md** for full specification.
+See **docs/API_ENDPOINTS.md** for full specification.
 
 ---
 
@@ -269,7 +270,7 @@ See **API_ENDPOINTS.md** for full specification.
         New balance: 15 points"
 ```
 
-See **WHATSAPP_FLOWS.md** for 12 detailed conversation flows.
+See **docs/WHATSAPP_FLOWS.md** for 12 detailed conversation flows.
 
 ---
 
@@ -447,7 +448,7 @@ docker-compose up -d
 
 ### AWS Deploy
 
-See **IMPLEMENTATION_GUIDE.md** for complete AWS ECS setup.
+See **docs/IMPLEMENTATION_GUIDE.md** for complete AWS ECS setup.
 
 ---
 
@@ -506,7 +507,7 @@ This is a complete production-ready implementation. To extend:
 
 1. Add new features via service layer
 2. Update database schema with migrations
-3. Document API changes in API_ENDPOINTS.md
+3. Document API changes in docs/API_ENDPOINTS.md
 4. Add tests for new functionality
 5. Update architecture docs
 
