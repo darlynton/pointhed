@@ -31,10 +31,8 @@
     "nanoid": "^5.0.9",
     "node-cron": "^4.0.0",
     "nodemailer": "^7.0.12",
+    "prisma": "^5.22.0",
     "qrcode": "^1.5.4",
     "zod": "^3.23.8"
-  },
-  "devDependencies": {
-    "prisma": "^5.22.0"
   }
 }
