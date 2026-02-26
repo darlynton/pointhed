@@ -73,6 +73,16 @@ function sanitizeMessage(message) {
   return message;
 }
 
+function normalizeCommandText(input) {
+  if (!input || typeof input !== 'string') return '';
+  return input
+    .normalize('NFKC')
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+}
+
 async function cancelRedemptionWithRefund({ redemptionId, tenantId, reason }) {
   try {
     if (!redemptionId || !tenantId) return null;
@@ -692,14 +702,15 @@ async function handleIncomingMessage(message, metadata) {
     if (listReply) {
       // Handle business selection from list
       const selectedItem = listReply.id || listReply.title.replace('✓ ', '');
+      const selectedItemNormalized = normalizeCommandText(String(selectedItem || ''));
       console.log(`📋 List item selected: ${selectedItem}`);
       
       // Handle menu actions
-      if (selectedItem === 'claim') {
+      if (selectedItem === 'claim' || selectedItemNormalized === 'claim' || selectedItemNormalized.includes('submit')) {
         message.text = { body: 'claim' };
         message.type = 'text';
         // Fall through to text handling
-      } else if (selectedItem === 'balance') {
+      } else if (selectedItem === 'balance' || selectedItemNormalized.includes('balance')) {
         message.text = { body: 'balance' };
         message.type = 'text';
         // Fall through to text handling
@@ -720,7 +731,7 @@ async function handleIncomingMessage(message, metadata) {
           console.error('❌ Error showing rewards page:', error);
         }
         return;
-      } else if (selectedItem === 'rewards') {
+      } else if (selectedItem === 'rewards' || selectedItemNormalized.includes('reward')) {
         message.text = { body: 'rewards' };
         message.type = 'text';
         // Fall through to text handling
@@ -785,7 +796,7 @@ async function handleIncomingMessage(message, metadata) {
           console.error('❌ Error handling reward selection:', error);
         }
         return;
-      } else if (selectedItem === 'switch') {
+      } else if (selectedItem === 'switch' || selectedItemNormalized.includes('switch') || selectedItemNormalized.includes('business')) {
         message.text = { body: 'businesses' };
         message.type = 'text';
         // Fall through to text handling
@@ -949,12 +960,18 @@ async function handleIncomingMessage(message, metadata) {
 
   // Handle text messages
   if (message.type === 'text') {
-    const messageText = message.text.body;
-    const messageTextLower = messageText.toLowerCase();
+    const messageText = (message.text?.body || '').toString();
+    const messageTextTrimmed = messageText.trim();
+    const messageTextLower = normalizeCommandText(messageTextTrimmed);
+
+    if (!messageTextLower) {
+      console.log('ℹ️ Ignoring empty text payload');
+      return;
+    }
 
     // Check for CLAIM_<vendorCode> pattern
-    if (messageText.toUpperCase().startsWith('CLAIM_')) {
-      const vendorCode = messageText.substring(6).trim(); // Extract vendor code after "CLAIM_"
+    if (messageTextTrimmed.toUpperCase().startsWith('CLAIM_')) {
+      const vendorCode = messageTextTrimmed.substring(6).trim(); // Extract vendor code after "CLAIM_"
       
       try {
         // Find tenant by vendor code
@@ -1029,8 +1046,8 @@ async function handleIncomingMessage(message, metadata) {
     }
 
     // Check for REDEEM_<rewardId> pattern
-    if (messageText.toUpperCase().startsWith('REDEEM_')) {
-      const rewardId = messageText.substring(7).trim().split(/\s+/)[0]; // Extract reward ID (before first space)
+    if (messageTextTrimmed.toUpperCase().startsWith('REDEEM_')) {
+      const rewardId = messageTextTrimmed.substring(7).trim().split(/\s+/)[0]; // Extract reward ID (before first space)
       
       try {
         // Get customer from phone number
@@ -1167,12 +1184,12 @@ async function handleIncomingMessage(message, metadata) {
     }
 
     // Check for structured claim format (AMOUNT/DATE/CHANNEL)
-    if (messageText.includes('AMOUNT:') && messageText.includes('DATE:') && messageText.includes('CHANNEL:')) {
+    if (messageTextTrimmed.toUpperCase().includes('AMOUNT:') && messageTextTrimmed.toUpperCase().includes('DATE:') && messageTextTrimmed.toUpperCase().includes('CHANNEL:')) {
       try {
         // Parse the message
-        const amountMatch = messageText.match(/AMOUNT:\s*(\d+)/i);
-        const dateMatch = messageText.match(/DATE:\s*([\d-]+)/i);
-        const channelMatch = messageText.match(/CHANNEL:\s*(\w+)/i);
+        const amountMatch = messageTextTrimmed.match(/AMOUNT:\s*(\d+)/i);
+        const dateMatch = messageTextTrimmed.match(/DATE:\s*([\d-]+)/i);
+        const channelMatch = messageTextTrimmed.match(/CHANNEL:\s*(\w+)/i);
 
         if (!amountMatch || !dateMatch || !channelMatch) {
           await sendWhatsAppMessage({
