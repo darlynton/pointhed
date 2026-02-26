@@ -1145,51 +1145,19 @@ export function SettingsTab() {
             <CardHeader className="p-4 sm:p-6">
               <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                 <CreditCard className="size-4 sm:size-5" />
-                Subscription & Billing
+                Billing
               </CardTitle>
               <CardDescription className="text-xs sm:text-sm">
-                Manage your platform subscription
+                Subscription plans are not available yet
               </CardDescription>
             </CardHeader>
             <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0 space-y-4">
-              <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg">
+              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border">
                 <div>
-                  <p className="font-medium text-blue-900">Current Plan</p>
-                  <p className="text-sm text-blue-700">Professional Plan</p>
+                  <p className="font-medium text-gray-900">No active subscription</p>
+                  <p className="text-sm text-gray-600">Plan management will be added in a future release.</p>
                 </div>
-                <Badge className="bg-blue-600">Active</Badge>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3 sm:gap-4 text-xs sm:text-sm">
-                <div>
-                  <p className="text-gray-600">Monthly Price</p>
-                  <p className="font-medium">₦15,000 / month</p>
-                </div>
-                <div>
-                  <p className="text-gray-600">Next Billing</p>
-                  <p className="font-medium">Jan 20, 2025</p>
-                </div>
-                <div>
-                  <p className="text-gray-600">Customers</p>
-                  <p className="font-medium">245 / 1,000</p>
-                </div>
-                <div>
-                  <p className="text-gray-600">Messages</p>
-                  <p className="font-medium">1,240 / 10,000</p>
-                </div>
-              </div>
-
-              <Separator />
-
-              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-                <Button variant="outline" className="flex-1 text-xs sm:text-sm">
-                  <CreditCard className="size-4 mr-2" />
-                  <span className="hidden sm:inline">Update Payment Method</span>
-                  <span className="sm:hidden">Update Payment</span>
-                </Button>
-                <Button variant="outline" className="flex-1 text-xs sm:text-sm">
-                  View Invoices
-                </Button>
+                <Badge variant="outline">Coming soon</Badge>
               </div>
             </CardContent>
           </Card>
@@ -1201,57 +1169,15 @@ export function SettingsTab() {
                 API & Integrations
               </CardTitle>
               <CardDescription className="text-xs sm:text-sm">
-                Connect with external systems
+                External integrations are not available yet
               </CardDescription>
             </CardHeader>
             <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0 space-y-4">
-              <div className="space-y-2">
-                <Label>API Key</Label>
-                <div className="flex gap-2">
-                  <Input
-                    type="password"
-                    value="example_key_hidden"
-                    readOnly
-                    className="font-mono"
-                  />
-                  <Button variant="outline">Copy</Button>
-                </div>
-                <p className="text-xs text-gray-500">
-                  Use this key to integrate with POS systems or custom applications
+              <div className="p-4 bg-gray-50 rounded-lg border">
+                <p className="text-sm font-medium text-gray-900">API integration is not implemented</p>
+                <p className="text-xs text-gray-600 mt-1">
+                  API keys, POS integration, and third-party integrations will be enabled in a future release.
                 </p>
-              </div>
-
-              <Separator />
-
-              <div className="space-y-3">
-                <h4 className="text-sm font-medium">Available Integrations</h4>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between p-3 border rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <div className="size-8 bg-gray-100 rounded flex items-center justify-center">
-                        <MessageSquare className="size-4" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium">WhatsApp Business API</p>
-                        <p className="text-xs text-gray-600">Connected</p>
-                      </div>
-                    </div>
-                    <Badge className="bg-green-600">Active</Badge>
-                  </div>
-
-                  <div className="flex items-center justify-between p-3 border rounded-lg opacity-60">
-                    <div className="flex items-center gap-3">
-                      <div className="size-8 bg-gray-100 rounded flex items-center justify-center">
-                        <CreditCard className="size-4" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium">POS Integration</p>
-                        <p className="text-xs text-gray-600">Coming soon</p>
-                      </div>
-                    </div>
-                    <Badge variant="outline">Soon</Badge>
-                  </div>
-                </div>
               </div>
             </CardContent>
           </Card>
