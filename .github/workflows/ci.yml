@@ -68,6 +68,10 @@ jobs:
         run: npm --prefix backend run start > backend-ci.log 2>&1 &
 
       - name: Start frontend
+        env:
+          VITE_API_URL: http://127.0.0.1:3001/api/v1
+          VITE_SUPABASE_URL: https://ci-placeholder.supabase.co
+          VITE_SUPABASE_ANON_KEY: ci-placeholder-anon-key
         run: npm run dev -- --host 127.0.0.1 --port 5173 > frontend-ci.log 2>&1 &
 
       - name: Wait for services
