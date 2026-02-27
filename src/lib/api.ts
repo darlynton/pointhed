@@ -158,7 +158,7 @@ class ApiClient {
         const errorMessage = data.error || `HTTP error! status: ${response.status}`;
         
         // Handle token expiration - try refresh first before redirecting
-        if (response.status === 401 || errorMessage.toLowerCase().includes('token expired') || errorMessage.toLowerCase().includes('unauthorized')) {
+        if (!options.skipAuth && (response.status === 401 || errorMessage.toLowerCase().includes('token expired') || errorMessage.toLowerCase().includes('unauthorized'))) {
           // Only attempt refresh if we haven't already tried and we have a refresh token
           if (!options.skipRefresh && this.getRefreshToken()) {
             console.log('Got 401, attempting token refresh...');
