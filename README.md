@@ -549,6 +549,6 @@ For questions about implementation:
 
 ---
 
-**Built with ❤️ for Nigerian businesses**
+**Built with ❤️ for small businesses**
 
 *This platform enables any vendor to launch a professional loyalty program in minutes, not months.*

@@ -601,7 +601,7 @@ export function CustomersTab() {
           <h2 className="text-xl sm:text-2xl font-semibold mb-1">Customer Management</h2>
           <p className="text-sm text-gray-600">View and manage your loyalty program members</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
           {/* Bulk Import Button */}
           <Dialog open={importDialogOpen} onOpenChange={(open) => { setImportDialogOpen(open); if (!open) resetImport(); }}>
             <DialogTrigger asChild>
@@ -610,7 +610,7 @@ export function CustomersTab() {
                 Import CSV
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl">
+            <DialogContent className="sm:max-w-2xl">
               <DialogHeader>
                 <DialogTitle>Bulk Import Customers</DialogTitle>
                 <DialogDescription>Upload a CSV file to import multiple customers at once</DialogDescription>

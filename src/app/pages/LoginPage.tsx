@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -9,21 +9,6 @@ import { Checkbox } from '../components/ui/checkbox';
 import { apiClient } from '../../lib/api';
 import { supabase } from '../../lib/supabase';
 import { Eye, EyeOff } from 'lucide-react';
-
-declare global {
-  interface Window {
-    turnstile?: {
-      render: (container: string | HTMLElement, options: {
-        sitekey: string;
-        callback?: (token: string) => void;
-        'expired-callback'?: () => void;
-        'error-callback'?: () => void;
-      }) => string;
-      reset: (widgetId?: string) => void;
-      remove: (widgetId?: string) => void;
-    };
-  }
-}
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -38,51 +23,6 @@ export default function LoginPage() {
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotMessage, setForgotMessage] = useState('');
   const [forgotError, setForgotError] = useState('');
-  const [forgotCaptchaToken, setForgotCaptchaToken] = useState('');
-  const [forgotCaptchaWidgetId, setForgotCaptchaWidgetId] = useState<string | null>(null);
-  const turnstileSiteKey = (import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined)?.trim();
-
-  useEffect(() => {
-    if (!turnstileSiteKey || !forgotOpen) return;
-
-    const renderWidget = () => {
-      if (!window.turnstile) return;
-      if (forgotCaptchaWidgetId) return;
-
-      const id = window.turnstile.render('#turnstile-forgot-password', {
-        sitekey: turnstileSiteKey,
-        callback: (token: string) => setForgotCaptchaToken(token),
-        'expired-callback': () => setForgotCaptchaToken(''),
-        'error-callback': () => setForgotCaptchaToken('')
-      });
-
-      setForgotCaptchaWidgetId(id);
-    };
-
-    const existing = document.querySelector('script[data-turnstile="true"]') as HTMLScriptElement | null;
-    if (existing) {
-      if (window.turnstile) renderWidget();
-      else existing.addEventListener('load', renderWidget, { once: true });
-      return;
-    }
-
-    const script = document.createElement('script');
-    script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
-    script.async = true;
-    script.defer = true;
-    script.setAttribute('data-turnstile', 'true');
-    script.addEventListener('load', renderWidget, { once: true });
-    document.head.appendChild(script);
-  }, [turnstileSiteKey, forgotOpen, forgotCaptchaWidgetId]);
-
-  useEffect(() => {
-    if (forgotOpen) return;
-    setForgotCaptchaToken('');
-    if (forgotCaptchaWidgetId && window.turnstile) {
-      window.turnstile.remove(forgotCaptchaWidgetId);
-      setForgotCaptchaWidgetId(null);
-    }
-  }, [forgotOpen, forgotCaptchaWidgetId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -226,24 +166,14 @@ export default function LoginPage() {
     try {
       const targetEmail = (forgotEmail || email).trim();
       if (!targetEmail) throw new Error('Please enter your email.');
-      if (turnstileSiteKey && !forgotCaptchaToken) {
-        throw new Error('Please complete the verification challenge first.');
-      }
       const redirectTo = `${window.location.origin}/reset-password`;
-      const { error: fErr } = await supabase.auth.resetPasswordForEmail(targetEmail, {
-        redirectTo,
-        ...(forgotCaptchaToken ? { captchaToken: forgotCaptchaToken } : {})
-      });
+      const { error: fErr } = await supabase.auth.resetPasswordForEmail(targetEmail, { redirectTo });
       if (fErr) throw fErr;
       setForgotMessage('Check your inbox for a reset link.');
     } catch (err: any) {
       setForgotError(err.message || 'Could not send reset email.');
     } finally {
       setForgotLoading(false);
-      if (forgotCaptchaWidgetId && window.turnstile) {
-        window.turnstile.reset(forgotCaptchaWidgetId);
-      }
-      setForgotCaptchaToken('');
     }
   };
 
@@ -410,13 +340,6 @@ export default function LoginPage() {
                         disabled={forgotLoading}
                       />
                     </div>
-
-                    {turnstileSiteKey && (
-                      <div className="pt-1">
-                        <div id="turnstile-forgot-password" className="flex justify-center" />
-                        <p className="text-xs text-gray-500 text-center mt-2">Protected by Cloudflare Turnstile</p>
-                      </div>
-                    )}
 
                     <div className="flex gap-2">
                       <Button

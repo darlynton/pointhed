@@ -8,6 +8,21 @@ import { Alert, AlertDescription } from '../components/ui/alert';
 import { supabase } from '../../lib/supabase';
 import { Eye, EyeOff } from 'lucide-react';
 
+declare global {
+  interface Window {
+    turnstile?: {
+      render: (container: string | HTMLElement, options: {
+        sitekey: string;
+        callback?: (token: string) => void;
+        'expired-callback'?: () => void;
+        'error-callback'?: () => void;
+      }) => string;
+      reset: (widgetId?: string) => void;
+      remove: (widgetId?: string) => void;
+    };
+  }
+}
+
 export default function ResetPasswordPage() {
   const navigate = useNavigate();
   const [password, setPassword] = useState('');
@@ -17,6 +32,9 @@ export default function ResetPasswordPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState('');
+  const [captchaWidgetId, setCaptchaWidgetId] = useState<string | null>(null);
+  const turnstileSiteKey = (import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined)?.trim();
 
   // Check if user arrived via magic link
   useEffect(() => {
@@ -28,6 +46,38 @@ export default function ResetPasswordPage() {
     };
     checkSession();
   }, []);
+
+  useEffect(() => {
+    if (!turnstileSiteKey || success) return;
+
+    const renderWidget = () => {
+      if (!window.turnstile) return;
+      if (captchaWidgetId) return;
+
+      const id = window.turnstile.render('#turnstile-reset-password', {
+        sitekey: turnstileSiteKey,
+        callback: (token: string) => setCaptchaToken(token),
+        'expired-callback': () => setCaptchaToken(''),
+        'error-callback': () => setCaptchaToken('')
+      });
+      setCaptchaWidgetId(id);
+    };
+
+    const existing = document.querySelector('script[data-turnstile="true"]') as HTMLScriptElement | null;
+    if (existing) {
+      if (window.turnstile) renderWidget();
+      else existing.addEventListener('load', renderWidget, { once: true });
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+    script.async = true;
+    script.defer = true;
+    script.setAttribute('data-turnstile', 'true');
+    script.addEventListener('load', renderWidget, { once: true });
+    document.head.appendChild(script);
+  }, [turnstileSiteKey, success, captchaWidgetId]);
 
   const validatePassword = (pwd: string): string | null => {
     if (!pwd) return 'Password is required';
@@ -65,6 +115,9 @@ export default function ResetPasswordPage() {
       if (password !== confirmPassword) {
         throw new Error('Passwords do not match');
       }
+      if (turnstileSiteKey && !captchaToken) {
+        throw new Error('Please complete the verification challenge first.');
+      }
 
       // Update password via Supabase
       const { error: updateErr } = await supabase.auth.updateUser({ password });
@@ -78,6 +131,10 @@ export default function ResetPasswordPage() {
       setError(err.message || 'Failed to reset password');
     } finally {
       setLoading(false);
+      if (captchaWidgetId && window.turnstile) {
+        window.turnstile.reset(captchaWidgetId);
+      }
+      setCaptchaToken('');
     }
   };
 
@@ -160,6 +217,13 @@ export default function ResetPasswordPage() {
                   </button>
                 </div>
               </div>
+
+              {turnstileSiteKey && (
+                <div className="pt-1">
+                  <div id="turnstile-reset-password" className="flex justify-center" />
+                  <p className="text-xs text-gray-500 text-center mt-2">Protected by Cloudflare Turnstile</p>
+                </div>
+              )}
 
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? 'Resetting...' : 'Reset Password'}
