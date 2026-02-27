@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -10,6 +10,21 @@ import { apiClient } from '../../lib/api';
 import { supabase } from '../../lib/supabase';
 import { CheckCircle2, Eye, EyeOff } from 'lucide-react';
 
+declare global {
+  interface Window {
+    turnstile?: {
+      render: (container: string | HTMLElement, options: {
+        sitekey: string;
+        callback?: (token: string) => void;
+        'expired-callback'?: () => void;
+        'error-callback'?: () => void;
+      }) => string;
+      reset: (widgetId?: string) => void;
+      remove: (widgetId?: string) => void;
+    };
+  }
+}
+
 export default function SignupPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
@@ -17,6 +32,9 @@ export default function SignupPage() {
   const [pendingConfirmation, setPendingConfirmation] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState('');
+  const [captchaWidgetId, setCaptchaWidgetId] = useState<string | null>(null);
+  const turnstileSiteKey = (import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined)?.trim();
   
   const [formData, setFormData] = useState({
     firstName: '',
@@ -30,6 +48,39 @@ export default function SignupPage() {
   });
 
   const [phoneCountryCode, setPhoneCountryCode] = useState('GB');
+
+  useEffect(() => {
+    if (!turnstileSiteKey || pendingConfirmation) return;
+
+    const renderWidget = () => {
+      if (!window.turnstile) return;
+      if (captchaWidgetId) return;
+
+      const id = window.turnstile.render('#turnstile-signup', {
+        sitekey: turnstileSiteKey,
+        callback: (token: string) => setCaptchaToken(token),
+        'expired-callback': () => setCaptchaToken(''),
+        'error-callback': () => setCaptchaToken('')
+      });
+      setCaptchaWidgetId(id);
+    };
+
+    const existing = document.querySelector('script[data-turnstile="true"]') as HTMLScriptElement | null;
+    if (existing) {
+      if (window.turnstile) renderWidget();
+      else existing.addEventListener('load', renderWidget, { once: true });
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+    script.async = true;
+    script.defer = true;
+    script.setAttribute('data-turnstile', 'true');
+    script.addEventListener('load', renderWidget, { once: true });
+    document.head.appendChild(script);
+
+  }, [turnstileSiteKey, pendingConfirmation]);
 
   // Countries mapped to supported currencies (NGN, GBP, USD, EUR)
   const countries = [
@@ -158,6 +209,12 @@ export default function SignupPage() {
     setError('');
     setLoading(true);
 
+    if (turnstileSiteKey && !captchaToken) {
+      setError('Please complete the verification challenge and try again.');
+      setLoading(false);
+      return;
+    }
+
     try {
       // 1) Create credentials in Supabase
       const fullName = `${formData.firstName} ${formData.lastName}`.trim();
@@ -177,6 +234,7 @@ export default function SignupPage() {
         password: formData.password,
         options: {
           emailRedirectTo: `${window.location.origin}/auth/callback`,
+          ...(captchaToken ? { captchaToken } : {}),
           data: profileData // Store in user metadata for retrieval after email confirmation
         }
       });
@@ -185,6 +243,9 @@ export default function SignupPage() {
         // Handle specific error cases
         if (sErr.message?.includes('User already registered')) {
           throw new Error('An account with this email already exists. Please login instead.');
+        }
+        if ((sErr as any)?.status === 429 || sErr.message?.toLowerCase().includes('rate limit')) {
+          throw new Error('Too many signup attempts. Please wait a few minutes and try again.');
         }
         throw sErr;
       }
@@ -236,6 +297,10 @@ export default function SignupPage() {
       setError(err.message || 'Registration failed. Please try again.');
     } finally {
       setLoading(false);
+      if (captchaWidgetId && window.turnstile) {
+        window.turnstile.reset(captchaWidgetId);
+      }
+      setCaptchaToken('');
     }
   };
 
@@ -521,6 +586,13 @@ export default function SignupPage() {
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? 'Creating account...' : 'Create Account'}
               </Button>
+
+              {turnstileSiteKey && (
+                <div className="pt-2">
+                  <div id="turnstile-signup" className="flex justify-center" />
+                  <p className="text-xs text-gray-500 text-center mt-2">Protected by Cloudflare Turnstile</p>
+                </div>
+              )}
             </form>
           )}
 
