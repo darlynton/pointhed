@@ -43,19 +43,30 @@ app.use(cors({
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
 
+    const normalizedOrigin = origin.replace(/\/$/, '');
+
       // Allow localhost, 127.0.0.1 or IPv6 loopback ([::1] or ::1) on any port (http or https)
-      if (origin.match(/^https?:\/\/(\[::1\]|::1|localhost|127\.0\.0\.1)(:\d+)?$/)) {
+      if (normalizedOrigin.match(/^https?:\/\/(\[::1\]|::1|localhost|127\.0\.0\.1)(:\d+)?$/)) {
         return callback(null, true);
       }
 
     // Allow ngrok URLs (for development)
-    if (origin.match(/^https?:\/\/[a-z0-9]+\.ngrok(-free)?\.app$/)) {
+    if (normalizedOrigin.match(/^https?:\/\/[a-z0-9]+\.ngrok(-free)?\.app$/)) {
       return callback(null, true);
     }
 
-    // Allow specific frontend URL if set
-    const frontendUrl = process.env.FRONTEND_URL;
-    if (frontendUrl && origin === frontendUrl) {
+    // Allow Vercel deployments (production + preview)
+    if (normalizedOrigin.match(/^https:\/\/[a-z0-9-]+\.vercel\.app$/)) {
+      return callback(null, true);
+    }
+
+    // Allow specific frontend URL(s) if set (comma-separated)
+    const configuredOrigins = (process.env.FRONTEND_URL || '')
+      .split(',')
+      .map((u) => u.trim().replace(/\/$/, ''))
+      .filter(Boolean);
+
+    if (configuredOrigins.includes(normalizedOrigin)) {
       return callback(null, true);
     }
 
