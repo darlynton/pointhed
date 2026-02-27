@@ -34,7 +34,7 @@ export default function OnboardingPage() {
         
         if (response.user?.tenant?.onboardingCompleted) {
           // Already onboarded, redirect to dashboard
-          navigate('/dashboard/overview');
+          navigate('/dashboard/overview', { replace: true });
         }
       } catch (err) {
         console.error('Failed to fetch user:', err);
@@ -110,8 +110,8 @@ export default function OnboardingPage() {
       // Refresh user data to get updated onboarding status
       await apiClient.getCurrentUser();
 
-      // Navigate to dashboard - user data is now updated
-      navigate('/dashboard/overview', { replace: true });
+      // Navigate to dashboard with a hard replace to avoid stale auth-state loops on mobile browsers
+      window.location.replace('/dashboard/overview');
     } catch (err: any) {
       console.error('Onboarding error:', err);
       setError(err?.message || 'Failed to complete onboarding. Please try again.');

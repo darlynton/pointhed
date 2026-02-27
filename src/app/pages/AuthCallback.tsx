@@ -53,7 +53,7 @@ export default function AuthCallback() {
             const userData = await apiClient.getCurrentUser();
             if (userData?.user?.tenant) {
               localStorage.removeItem('pending_signup');
-              const destination = userData.user.tenant.onboardingCompleted ? '/overview' : '/onboarding';
+              const destination = userData.user.tenant.onboardingCompleted ? '/dashboard/overview' : '/onboarding';
               setStatus('ready');
               navigate(destination);
               return;
