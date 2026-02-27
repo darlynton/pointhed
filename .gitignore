@@ -70,6 +70,14 @@ temp/
 # Uploaded files (keep folder structure, ignore uploads)
 public/uploads/*
 !public/uploads/.gitkeep
+!public/uploads/logo.png
+!public/uploads/logo-white.png
+!public/uploads/problem.png
+!public/uploads/coin.png
+!public/uploads/whatsapp-mockup-single.png
+!public/uploads/whatsapp-mockup-menu.png
+!public/uploads/whatsapp-mockup.png
+!public/uploads/whatsapp-mockup.jpg
 
 # Prisma
 prisma/migrations/**/migration_lock.toml
