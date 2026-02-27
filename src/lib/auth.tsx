@@ -55,16 +55,13 @@ export function useAuth() {
     try {
       // Wait briefly for Supabase to restore session from storage
       await new Promise(resolve => setTimeout(resolve, 100));
-      
-      // Check if Supabase session exists first (takes precedence over legacy token)
-      const { data: supabaseSession } = await supabase.auth.getSession();
-      if (supabaseSession?.session) {
-        // Supabase session active — clear legacy token and use Supabase
-        apiClient.setToken(null);
-      } else {
-        // No Supabase session — try legacy token
-        const token = apiClient.getToken();
-        if (!token) {
+
+      // Prefer legacy backend token when present (login fallback path).
+      // If none exists, then rely on Supabase session.
+      const token = apiClient.getToken();
+      if (!token) {
+        const { data: supabaseSession } = await supabase.auth.getSession();
+        if (!supabaseSession?.session) {
           setLoading(false);
           return;
         }

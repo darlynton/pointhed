@@ -131,11 +131,12 @@ class ApiClient {
       ...(options.headers as Record<string, string>),
     };
 
-    // Attach Supabase access token if present; fallback to legacy auth_token
+    // Prefer legacy auth token when present (explicit backend login fallback),
+    // otherwise use Supabase access token.
     const { data } = await supabase.auth.getSession();
     const supaToken = data.session?.access_token || null;
     const legacyToken = localStorage.getItem('auth_token');
-    const bearer = supaToken || legacyToken;
+    const bearer = legacyToken || supaToken;
     console.log('API Request:', endpoint, 'Supabase token:', !!supaToken, 'Legacy token:', !!legacyToken);
     if (bearer && !options.skipAuth) {
       headers['Authorization'] = `Bearer ${bearer}`;

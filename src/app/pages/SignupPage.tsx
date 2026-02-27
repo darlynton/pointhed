@@ -583,16 +583,16 @@ export default function SignupPage() {
                 </div>
               </div>
 
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? 'Creating account...' : 'Create Account'}
-              </Button>
-
               {turnstileSiteKey && (
                 <div className="pt-2">
                   <div id="turnstile-signup" className="flex justify-center" />
                   <p className="text-xs text-gray-500 text-center mt-2">Protected by Cloudflare Turnstile</p>
                 </div>
               )}
+
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? 'Creating account...' : 'Create Account'}
+              </Button>
             </form>
           )}
 
