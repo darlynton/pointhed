@@ -45,6 +45,7 @@ jobs:
           VERIFY_TOKEN_VALUE="ci-webhook-$(date +%s)-$(openssl rand -hex 8)"
           cat > backend/.env << EOF
           DATABASE_URL=postgresql://postgres:postgres@localhost:5432/pointhed?schema=public
+          DIRECT_URL=postgresql://postgres:postgres@localhost:5432/pointhed?schema=public
           JWT_SECRET=${JWT_SECRET_VALUE}
           PORT=3001
           FRONTEND_URL=http://localhost:5173
