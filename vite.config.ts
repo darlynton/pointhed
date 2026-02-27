@@ -25,7 +25,8 @@ export default defineConfig({
           if (!id.includes('node_modules')) return undefined
 
           if (id.includes('@supabase/supabase-js') || id.includes('jose')) return 'auth-supabase'
-          if (id.includes('recharts')) return 'charts'
+          // Keep Recharts in default chunking to avoid runtime init-order issues
+          if (id.includes('recharts')) return undefined
           if (id.includes('qr-scanner')) return 'qr'
           if (id.includes('@mui/') || id.includes('@emotion/')) return 'mui'
           if (id.includes('@radix-ui/')) return 'radix'
