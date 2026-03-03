@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -23,6 +23,33 @@ export default function LoginPage() {
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotMessage, setForgotMessage] = useState('');
   const [forgotError, setForgotError] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const redirectIfAuthenticated = async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
+        if (!data?.session || cancelled) return;
+
+        // Verify app profile exists before redirecting
+        const profile = await apiClient.getCurrentUser();
+        if (cancelled) return;
+
+        if (profile?.user) {
+          const onboardingCompleted = profile.user?.tenant?.onboardingCompleted;
+          navigate(onboardingCompleted ? '/dashboard/overview' : '/onboarding', { replace: true });
+        }
+      } catch {
+        // Ignore and stay on login if profile/session check fails
+      }
+    };
+
+    redirectIfAuthenticated();
+    return () => {
+      cancelled = true;
+    };
+  }, [navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -99,7 +99,7 @@ export function DashboardLayout({ children, activeTab, onTabChange, userType = '
               {sidebarOpen ? <X className="size-5" /> : <Menu className="size-5" />}
             </Button>
             <div className="min-w-0">
-              <h1 className="font-semibold text-sm sm:text-base truncate">Loyalty LaaS</h1>
+              <h1 className="font-semibold text-sm sm:text-base truncate">Pointhed</h1>
               <p className="text-xs sm:text-sm text-gray-500 truncate">
                 {userType === 'admin' ? 'Platform Admin' : 'Vendor Dashboard'}
               </p>

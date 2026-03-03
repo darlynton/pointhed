@@ -9,6 +9,7 @@ import {
   calculatePointValue,
   validateBurnRate
 } from '../config/loyaltyConstants.js';
+import { sendWelcomeEmail } from '../services/email.service.js';
 
 const prisma = new PrismaClient();
 
@@ -552,6 +553,11 @@ export const completeOnboarding = async (req, res) => {
       return res.status(400).json({ error: 'onboardingCompleted must be a boolean' });
     }
 
+    const before = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { onboardingCompleted: true, businessName: true, email: true },
+    });
+
     // Update tenant onboarding status
     const updated = await prisma.tenant.update({
       where: { id: tenantId },
@@ -559,6 +565,26 @@ export const completeOnboarding = async (req, res) => {
         onboardingCompleted,
       },
     });
+
+    // Send welcome email only when onboarding transitions false -> true
+    if (!before?.onboardingCompleted && onboardingCompleted === true) {
+      const owner = await prisma.vendorUser.findUnique({
+        where: { id: req.user.id },
+        select: { fullName: true, email: true },
+      });
+
+      const email = owner?.email || before?.email || req.user.email;
+      if (email) {
+        sendWelcomeEmail({
+          email,
+          fullName: owner?.fullName || 'there',
+          businessName: before?.businessName || 'your business',
+          dashboardUrl: process.env.FRONTEND_URL,
+        }).catch((err) => {
+          console.error('⚠️ Failed to send welcome email after onboarding:', err);
+        });
+      }
+    }
 
     res.json({ 
       message: 'Onboarding status updated successfully', 

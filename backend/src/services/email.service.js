@@ -1,7 +1,17 @@
 import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 
 // Lazy transporter - created on demand
 let transporter = null;
+let resendClient = null;
+
+const getResendClient = () => {
+  if (!process.env.RESEND_API_KEY) return null;
+  if (!resendClient) {
+    resendClient = new Resend(process.env.RESEND_API_KEY);
+  }
+  return resendClient;
+};
 
 // Create transporter based on environment
 const createTransporter = () => {
@@ -47,7 +57,8 @@ const createTransporter = () => {
     });
   }
 
-  // No email service configured
+  // No SMTP-style email service configured
+  // (Resend may still be configured via RESEND_API_KEY)
   console.warn('⚠️  No email service configured. Emails will not be sent.');
   return null;
 };
@@ -60,104 +71,147 @@ const getTransporter = () => {
   return transporter;
 };
 
-// Send waitlist confirmation email
-export const sendWaitlistConfirmation = async (email, position = null) => {
-  const transporter = getTransporter();
-  
-  if (!transporter) {
-    console.log('📧 Email service not configured. Skipping email to:', email);
+const hasEmailProviderConfigured = () => {
+  if (process.env.RESEND_API_KEY) return true;
+  if (process.env.EMAIL_SERVICE === 'gmail' && process.env.EMAIL_USER && process.env.EMAIL_PASSWORD) return true;
+  if (process.env.EMAIL_SERVICE === 'sendgrid' && process.env.SENDGRID_API_KEY) return true;
+  if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASSWORD) return true;
+  return false;
+};
+
+const sendEmail = async ({ from, to, subject, html, text }) => {
+  const resend = getResendClient();
+
+  if (resend) {
+    const response = await resend.emails.send({
+      from,
+      to,
+      subject,
+      html,
+      text,
+    });
+    return { messageId: response?.data?.id || response?.id || 'resend' };
+  }
+
+  const smtpTransporter = getTransporter();
+  if (!smtpTransporter) {
+    throw new Error('Email service not configured');
+  }
+
+  const info = await smtpTransporter.sendMail({ from, to, subject, html, text });
+  return { messageId: info.messageId };
+};
+
+
+
+// Test email configuration
+export const testEmailConfig = async () => {
+  if (getResendClient()) {
+    return { success: true, message: 'Resend is configured' };
+  }
+
+  const smtpTransporter = getTransporter();
+
+  if (!smtpTransporter) {
+    return { success: false, message: 'No email service configured' };
+  }
+
+  try {
+    await smtpTransporter.verify();
+    console.log('✅ Email service is ready to send messages');
+    return { success: true, message: 'Email service verified' };
+  } catch (error) {
+    console.error('❌ Email service verification failed:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Send welcome email to newly created vendor account
+export const sendWelcomeEmail = async ({
+  email,
+  fullName,
+  businessName,
+  dashboardUrl,
+}) => {
+  if (!hasEmailProviderConfigured()) {
+    console.log('📧 Email service not configured. Skipping welcome email to:', email);
     return { success: false, message: 'Email service not configured' };
   }
 
-  const positionText = position ? `<p style="font-size: 18px; font-weight: bold; color: #667eea; text-align: center; margin: 20px 0;">📊 You are number ${position} on the waitlist!</p>` : '';
-  const positionTextPlain = position ? `\n📊 You are number ${position} on the waitlist!\n` : '';
+  const appBaseUrl = (dashboardUrl || process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/+$/, '');
+  const dashboardLandingUrl = `${appBaseUrl}/dashboard/overview`;
+  const recipientName = fullName || 'there';
 
   try {
     const mailOptions = {
-      from: process.env.EMAIL_FROM || 'noreply@loyolq.com',
+      from: process.env.EMAIL_FROM || 'noreply@pointhed.com',
       to: email,
-      subject: 'Welcome to Loyolq Waitlist! 🎉',
+      subject: `Welcome to Pointhed, ${businessName}!`,
       html: `
         <!DOCTYPE html>
         <html>
         <head>
           <style>
-            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; }
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
             .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
-            .button { display: inline-block; background: #667eea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; }
-            .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
+            .header { background: linear-gradient(135deg, #264EFF 0%, #1e3fd6 100%); color: white; padding: 28px; text-align: center; border-radius: 10px 10px 0 0; }
+            .content { background: #ffffff; border: 1px solid #e5e7eb; border-top: none; padding: 28px; }
+            .button { display: inline-block; background: #264EFF; color: white; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-weight: 600; margin: 14px 0; }
+            .tip { background: #f3f7ff; border: 1px solid #dbe7ff; border-radius: 8px; padding: 14px; margin-top: 16px; }
+            .footer { color: #6b7280; font-size: 12px; text-align: center; padding: 18px; border-top: 1px solid #e5e7eb; }
           </style>
         </head>
         <body>
           <div class="container">
             <div class="header">
-              <h1>🎉 You're on the Waitlist!</h1>
+              <h2 style="margin:0;">Welcome to Pointhed</h2>
             </div>
             <div class="content">
-              <p>Hi there!</p>
-              <p>Thanks for joining the Loyolq waitlist. We're excited to have you on board! 🚀</p>
-              ${positionText}
-              <p>We're working hard to bring you the best customer loyalty platform for businesses. You'll be among the first to know when we launch.</p>
-              <p><strong>What happens next?</strong></p>
-              <ul>
-                <li>We'll keep you updated on our progress</li>
-                <li>You'll get early access when we launch</li>
-                <li>Special offers for early adopters</li>
-              </ul>
-              <p>In the meantime, want to try our instant demo?</p>
-              <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}" class="button">Try Instant Demo</a>
+              <p>Hi ${recipientName},</p>
+              <p>Your account for <strong>${businessName || 'your business'}</strong> is ready.</p>
+              <p>Open your dashboard to continue.</p>
+              <p style="text-align:center;">
+                <a href="${dashboardLandingUrl}" class="button" style="display:inline-block;background:#264EFF;color:#FFFFFF !important;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:600;margin:14px 0;">Open Dashboard</a>
+              </p>
+              <div class="tip">
+                <strong>Quick start:</strong>
+                <ul style="margin:8px 0 0 18px; padding:0;">
+                  <li>Open your dashboard</li>
+                  <li>Add your first customer</li>
+                  <li>Log a first transaction</li>
+                </ul>
+              </div>
             </div>
             <div class="footer">
-              <p>© ${new Date().getFullYear()} Loyolq. All rights reserved.</p>
-              <p>If you didn't sign up for this, you can safely ignore this email.</p>
+              © ${new Date().getFullYear()} Pointhed. All rights reserved.
             </div>
           </div>
         </body>
         </html>
       `,
       text: `
-Welcome to Loyolq Waitlist!
+Welcome to Pointhed!
 
-Thanks for joining the Loyolq waitlist. We're excited to have you on board!
-${positionTextPlain}
-We're working hard to bring you the best customer loyalty platform for businesses. You'll be among the first to know when we launch.
+Hi ${recipientName},
 
-What happens next?
-- We'll keep you updated on our progress
-- You'll get early access when we launch  
-- Special offers for early adopters
+Your account for ${businessName || 'your business'} has been created successfully.
 
-Visit ${process.env.FRONTEND_URL || 'http://localhost:5173'} to try our instant demo.
+Dashboard: ${dashboardLandingUrl}
 
-© ${new Date().getFullYear()} Loyolq. All rights reserved.
+Quick start:
+- Complete onboarding details
+- Add your first customer
+- Log a first transaction
+
+© ${new Date().getFullYear()} Pointhed
       `.trim(),
     };
 
-    const info = await transporter.sendMail(mailOptions);
-    console.log('✅ Email sent successfully:', info.messageId);
+    const info = await sendEmail(mailOptions);
+    console.log('✅ Welcome email sent:', info.messageId, 'to', email);
     return { success: true, messageId: info.messageId };
   } catch (error) {
-    console.error('❌ Error sending email:', error);
-    return { success: false, error: error.message };
-  }
-};
-
-// Test email configuration
-export const testEmailConfig = async () => {
-  const transporter = getTransporter();
-  
-  if (!transporter) {
-    return { success: false, message: 'No email service configured' };
-  }
-
-  try {
-    await transporter.verify();
-    console.log('✅ Email service is ready to send messages');
-    return { success: true, message: 'Email service verified' };
-  } catch (error) {
-    console.error('❌ Email service verification failed:', error);
+    console.error('❌ Error sending welcome email:', error);
     return { success: false, error: error.message };
   }
 };
@@ -176,9 +230,7 @@ export const sendNewClaimNotification = async ({
   claimId,
   pendingClaimsCount = 0
 }) => {
-  const transporter = getTransporter();
-  
-  if (!transporter) {
+  if (!hasEmailProviderConfigured()) {
     console.log('📧 Email service not configured. Skipping vendor notification.');
     return { success: false, message: 'Email service not configured' };
   }
@@ -280,7 +332,7 @@ ${pendingClaimsCount > 1 ? `You have ${pendingClaimsCount} pending claims to rev
       `.trim(),
     };
 
-    const info = await transporter.sendMail(mailOptions);
+    const info = await sendEmail(mailOptions);
     console.log('✅ Vendor notification email sent:', info.messageId);
     return { success: true, messageId: info.messageId };
   } catch (error) {
