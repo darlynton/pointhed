@@ -233,7 +233,7 @@ export default function SignupPage() {
         email: formData.contactEmail, 
         password: formData.password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: `${import.meta.env.VITE_SITE_URL || window.location.origin}/auth/callback`,
           ...(captchaToken ? { captchaToken } : {}),
           data: profileData // Store in user metadata for retrieval after email confirmation
         }
