@@ -102,8 +102,6 @@ const sendEmail = async ({ from, to, subject, html, text }) => {
   return { messageId: info.messageId };
 };
 
-
-
 // Test email configuration
 export const testEmailConfig = async () => {
   if (getResendClient()) {

@@ -27,7 +27,6 @@ import whatsappRoutes from './routes/whatsapp.routes.js';
 import settingsRoutes from './routes/settings.routes.js';
 import financialRoutes from './routes/financial.routes.js';
 import uploadRoutes from './routes/upload.routes.js';
-import waitlistRoutes from './routes/waitlist.routes.js';
 import vendorUserRoutes from './routes/vendorUser.routes.js';
 import path from 'path';
 
@@ -100,9 +99,6 @@ app.use('/webhook', webhookRoutes);
 
 // WhatsApp integration endpoints (wraps whatsapp service)
 app.use('/api/v1/whatsapp', whatsappRoutes);
-
-// Waitlist endpoint (no auth required)
-app.use('/api/v1/waitlist', waitlistRoutes);
 
 // Serve uploaded files with CORS headers
 app.use('/uploads', (req, res, next) => {

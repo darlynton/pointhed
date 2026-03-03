@@ -14,7 +14,6 @@ const TestCurrencyPage = lazy(() => import('./pages/TestCurrencyPage'));
 const LandingPage = lazy(() => import('./pages/LandingPage'));
 const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage'));
 const TermsOfServicePage = lazy(() => import('./pages/TermsOfServicePage'));
-const WaitlistLanding = lazy(() => import('./components/waitlist/WaitlistLanding').then((m) => ({ default: m.WaitlistLanding })));
 const DashboardLayout = lazy(() => import('./components/DashboardLayout').then((m) => ({ default: m.DashboardLayout })));
 const OverviewTab = lazy(() => import('./components/vendor/OverviewTab').then((m) => ({ default: m.OverviewTab })));
 const CustomersTab = lazy(() => import('./components/vendor/CustomersTab').then((m) => ({ default: m.CustomersTab })));
@@ -128,7 +127,6 @@ export default function App() {
             <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
             <Route path="/onboarding" element={<ProtectedRoute requireOnboarding={false}><OnboardingPage /></ProtectedRoute>} />
-            <Route path="/waitlist" element={<WaitlistLanding />} />
             <Route path="/test/currency" element={<ProtectedRoute><TestCurrencyPage /></ProtectedRoute>} />
             <Route 
               path="/dashboard/*" 
