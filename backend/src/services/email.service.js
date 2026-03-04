@@ -79,12 +79,12 @@ const hasEmailProviderConfigured = () => {
   return false;
 };
 
-const sendEmail = async ({ from, to, subject, html, text }) => {
+const sendEmail = async ({ from, to, replyTo, subject, html, text }) => {
   const resend = getResendClient();
 
   if (resend) {
     try {
-      const response = await resend.emails.send({ from, to, subject, html, text });
+      const response = await resend.emails.send({ from, to, ...(replyTo ? { reply_to: replyTo } : {}), subject, html, text });
       console.log('📧 Resend response:', JSON.stringify(response?.data || response));
       return { messageId: response?.data?.id || response?.id || 'resend' };
     } catch (resendErr) {
@@ -98,7 +98,7 @@ const sendEmail = async ({ from, to, subject, html, text }) => {
     throw new Error('Email service not configured');
   }
 
-  const info = await smtpTransporter.sendMail({ from, to, subject, html, text });
+  const info = await smtpTransporter.sendMail({ from, to, ...(replyTo ? { replyTo } : {}), subject, html, text });
   return { messageId: info.messageId };
 };
 
@@ -142,8 +142,9 @@ export const sendWelcomeEmail = async ({
 
   try {
     const mailOptions = {
-      from: process.env.EMAIL_FROM || 'noreply@pointhed.com',
+      from: process.env.EMAIL_FROM || 'Pointhed <noreply@pointhed.com>',
       to: email,
+      replyTo: process.env.EMAIL_REPLY_TO || 'support@pointhed.com',
       subject: `Welcome to Pointhed, ${businessName}!`,
       html: `
         <!DOCTYPE html>
@@ -239,8 +240,9 @@ export const sendNewClaimNotification = async ({
 
   try {
     const mailOptions = {
-      from: process.env.EMAIL_FROM || 'noreply@pointara.com',
+      from: process.env.EMAIL_FROM || 'Pointhed <noreply@pointhed.com>',
       to: vendorEmail,
+      replyTo: process.env.EMAIL_REPLY_TO || 'support@pointhed.com',
       subject: `🔔 New Claim Pending - ${customerName || customerPhone} (${amount})`,
       html: `
         <!DOCTYPE html>
