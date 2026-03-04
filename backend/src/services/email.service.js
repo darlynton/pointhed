@@ -83,14 +83,13 @@ const sendEmail = async ({ from, to, subject, html, text }) => {
   const resend = getResendClient();
 
   if (resend) {
-    const response = await resend.emails.send({
-      from,
-      to,
-      subject,
-      html,
-      text,
-    });
-    return { messageId: response?.data?.id || response?.id || 'resend' };
+    try {
+      const response = await resend.emails.send({ from, to, subject, html, text });
+      return { messageId: response?.data?.id || response?.id || 'resend' };
+    } catch (resendErr) {
+      console.warn('⚠️ Resend failed, falling back to SMTP:', resendErr?.message || resendErr);
+      // Fall through to SMTP
+    }
   }
 
   const smtpTransporter = getTransporter();
@@ -136,7 +135,7 @@ export const sendWelcomeEmail = async ({
     return { success: false, message: 'Email service not configured' };
   }
 
-  const appBaseUrl = (dashboardUrl || process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/+$/, '');
+  const appBaseUrl = (dashboardUrl || process.env.FRONTEND_URL || 'https://pointhed.com').replace(/\/+$/, '');
   const dashboardLandingUrl = `${appBaseUrl}/dashboard/overview`;
   const recipientName = fullName || 'there';
 
