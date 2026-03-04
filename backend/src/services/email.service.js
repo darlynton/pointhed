@@ -85,6 +85,7 @@ const sendEmail = async ({ from, to, subject, html, text }) => {
   if (resend) {
     try {
       const response = await resend.emails.send({ from, to, subject, html, text });
+      console.log('📧 Resend response:', JSON.stringify(response?.data || response));
       return { messageId: response?.data?.id || response?.id || 'resend' };
     } catch (resendErr) {
       console.warn('⚠️ Resend failed, falling back to SMTP:', resendErr?.message || resendErr);

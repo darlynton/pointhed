@@ -574,15 +574,20 @@ export const completeOnboarding = async (req, res) => {
       });
 
       const email = owner?.email || before?.email || req.user.email;
+      console.log('📧 Welcome email trigger — email:', email, 'name:', owner?.fullName, 'biz:', before?.businessName);
       if (email) {
         sendWelcomeEmail({
           email,
           fullName: owner?.fullName || 'there',
           businessName: before?.businessName || 'your business',
           dashboardUrl: process.env.FRONTEND_URL,
+        }).then((result) => {
+          console.log('✅ Welcome email result:', JSON.stringify(result));
         }).catch((err) => {
-          console.error('⚠️ Failed to send welcome email after onboarding:', err);
+          console.error('⚠️ Failed to send welcome email after onboarding:', err?.message || err);
         });
+      } else {
+        console.warn('⚠️ Welcome email skipped — no email address found for user', req.user.id);
       }
     }
 
