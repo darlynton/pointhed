@@ -438,6 +438,7 @@ async function handleIncomingMessage(message, metadata) {
         } catch (e) {
           console.warn('⚠️ Failed to set active vendor from join payload', e);
         }
+        message._joinTenantId = tenantId;  // pass context directly to activate handler
         message.text = { body: 'activate points' };
         message.type = 'text';
       }
@@ -926,6 +927,7 @@ async function handleIncomingMessage(message, metadata) {
       } catch (e) {
         console.warn('⚠️ Failed to set active vendor from join payload', e);
       }
+      message._joinTenantId = tenantId;  // pass context directly to activate handler
       message.text = { body: 'activate points' };
       message.type = 'text';
       console.log('✅ Normalized "join" button payload to text message with tenant context');
@@ -1298,7 +1300,26 @@ async function handleIncomingMessage(message, metadata) {
     if (messageTextLower === 'activate points' || messageTextLower === 'activate' || messageTextLower === 'activate rewards' || messageTextLower === 'join') {
       console.log('⚡ activate points handler start for', message.from);
       try {
-        let customer = await getActiveVendorCustomer(message.from);
+        let customer;
+
+        // If we have a direct tenant context from a join_ button, use it to do a
+        // deterministic lookup by (phone + tenantId) — this avoids the wrong-tenant
+        // response when the same phone is registered with multiple businesses.
+        if (message._joinTenantId) {
+          const variants = normalizePhoneVariants(message.from);
+          customer = await prisma.customer.findFirst({
+            where: { phoneNumber: { in: variants }, tenantId: message._joinTenantId, deletedAt: null },
+            include: { tenant: { select: { id: true, businessName: true, settings: true } } }
+          });
+          if (customer) {
+            console.log('activate points: resolved via _joinTenantId ->', customer.id, 'tenant', customer.tenantId);
+            await setActiveVendor(message.from, customer.tenantId);
+          }
+        }
+
+        if (!customer) {
+          customer = await getActiveVendorCustomer(message.from);
+        }
         console.log('activate points: active customer lookup result', customer?.id, 'tenant', customer?.tenantId);
 
         if (!customer) {
