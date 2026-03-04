@@ -1908,8 +1908,8 @@ function handleStatusUpdate(status, metadata) {
       const errorCodes = Array.isArray(status.errors) ? status.errors.map(e => Number(e.code)) : [];
 
       // Never send fallback for errors that would cause infinite loops or are unrecoverable:
-      // 131031 = Business Account locked, 131056 = rate limit, 131026 = message undeliverable
-      const noFallbackCodes = [131031, 131056, 131026, 130429, 131048];
+      // 131031 = Business Account locked, 131042 = payment issue, 131056 = rate limit, 131026 = message undeliverable
+      const noFallbackCodes = [131031, 131042, 131056, 131026, 130429, 131048];
       if (errorCodes.some(c => noFallbackCodes.includes(c))) {
         console.warn(`⚠️ Suppressing fallback for error code(s): ${errorCodes.join(', ')} — would cause loop`);
         return;
