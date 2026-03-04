@@ -906,42 +906,29 @@ async function handleIncomingMessage(message, metadata) {
   if (message.type === 'button') {
     const buttonText = (message.button?.text || '').toLowerCase();
     const buttonPayload = (message.button?.payload || '').toString();
-    console.log(`🔘 Button: ${message.button?.text || 'unknown'}`);
+    console.log(`🔘 Button: text='${buttonText}' payload='${buttonPayload}'`);
 
+    // Payload-driven handlers — these ALWAYS normalise to text and fall through.
+    // They must be checked FIRST so the else{return} below never fires for them.
     if (buttonPayload.startsWith('menu_')) {
       const tenantId = buttonPayload.split('_').slice(1).join('_');
-      try {
-        await setActiveVendor(message.from, tenantId);
-      } catch (e) {
-        console.warn('⚠️ Failed to set active vendor from menu payload', e);
-      }
+      try { await setActiveVendor(message.from, tenantId); } catch (e) { console.warn('⚠️ setActiveVendor menu failed', e); }
       message.text = { body: 'menu' };
       message.type = 'text';
-      console.log('✅ Normalized "menu" button payload to text message with tenant context');
-    }
-
-    if (buttonPayload.startsWith('join_')) {
+      console.log('✅ Normalised menu_ payload → text');
+    } else if (buttonPayload.startsWith('join_')) {
       const tenantId = buttonPayload.split('_').slice(1).join('_');
-      try {
-        await setActiveVendor(message.from, tenantId);
-      } catch (e) {
-        console.warn('⚠️ Failed to set active vendor from join payload', e);
-      }
-      message._joinTenantId = tenantId;  // pass context directly to activate handler
+      try { await setActiveVendor(message.from, tenantId); } catch (e) { console.warn('⚠️ setActiveVendor join failed', e); }
+      message._joinTenantId = tenantId;  // passed to activate handler for direct lookup
       message.text = { body: 'activate points' };
       message.type = 'text';
-      console.log('✅ Normalized "join" button payload to text message with tenant context');
-    }
-    
-    // Normalize button to text message for unified handling
-    if (buttonText.includes('activate points') || buttonText === 'activate') {
+      console.log('✅ Normalised join_ payload → activate points, _joinTenantId =', tenantId);
+    } else if (buttonText.includes('activate points') || buttonText === 'activate') {
       message.text = { body: 'activate points' };
       message.type = 'text';
-      console.log('✅ Normalized "activate points" button to text message');
     } else if (buttonText.includes('menu')) {
       message.text = { body: 'menu' };
       message.type = 'text';
-      console.log('✅ Normalized "menu" button to text message');
     } else if (buttonText.includes('check balance')) {
       message.text = { body: 'balance' };
       message.type = 'text';
@@ -949,11 +936,11 @@ async function handleIncomingMessage(message, metadata) {
       message.text = { body: 'rewards' };
       message.type = 'text';
     } else if (buttonText.includes('join')) {
-      // Quick reply from welcome template
       message.text = { body: 'join' };
       message.type = 'text';
     } else {
-      // Unknown button, skip processing
+      // Unknown button with no recognised payload — skip
+      console.log('ℹ️ Unrecognised button, skipping');
       return;
     }
   }
@@ -1312,8 +1299,23 @@ async function handleIncomingMessage(message, metadata) {
             include: { tenant: { select: { id: true, businessName: true, settings: true } } }
           });
           if (customer) {
-            console.log('activate points: resolved via _joinTenantId ->', customer.id, 'tenant', customer.tenantId);
+            console.log('activate points: resolved via _joinTenantId (phone match) ->', customer.id, 'tenant', customer.tenantId);
             await setActiveVendor(message.from, customer.tenantId);
+          } else {
+            // Phone format mismatch — fall back to most recently added non-opted-in customer for this tenant
+            console.log('activate points: phone lookup missed for tenantId', message._joinTenantId, ', trying tenantId-only fallback');
+            customer = await prisma.customer.findFirst({
+              where: { tenantId: message._joinTenantId, optedIn: false, deletedAt: null },
+              orderBy: { createdAt: 'desc' },
+              include: { tenant: { select: { id: true, businessName: true, settings: true } } }
+            });
+            if (customer) {
+              // Backfill the normalised phone so future lookups work
+              const normalised = normalizePhoneVariants(message.from).find(v => v.startsWith('+')) || message.from;
+              await prisma.customer.update({ where: { id: customer.id }, data: { phoneNumber: normalised } }).catch(() => {});
+              console.log('activate points: resolved via tenantId-only fallback ->', customer.id, 'tenant', customer.tenantId, '— phone backfilled to', normalised);
+              await setActiveVendor(normalised, customer.tenantId);
+            }
           }
         }
 
