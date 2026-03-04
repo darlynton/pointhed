@@ -1905,7 +1905,17 @@ function handleStatusUpdate(status, metadata) {
       if (!recipient) return;
 
       // If failure is due to re-engagement (outside 24-hour window), try sending a pre-approved template (HSM)
-      const hasReengageError = Array.isArray(status.errors) && status.errors.some(err => Number(err.code) === 131047 || String(err.code) === '131047');
+      const errorCodes = Array.isArray(status.errors) ? status.errors.map(e => Number(e.code)) : [];
+
+      // Never send fallback for errors that would cause infinite loops or are unrecoverable:
+      // 131031 = Business Account locked, 131056 = rate limit, 131026 = message undeliverable
+      const noFallbackCodes = [131031, 131056, 131026, 130429, 131048];
+      if (errorCodes.some(c => noFallbackCodes.includes(c))) {
+        console.warn(`⚠️ Suppressing fallback for error code(s): ${errorCodes.join(', ')} — would cause loop`);
+        return;
+      }
+
+      const hasReengageError = errorCodes.includes(131047);
       if (hasReengageError) {
         // Attempt template HSM fallback first
         console.log('ℹ️ Detected re-engagement failure (131047). Attempting template HSM fallback.');
