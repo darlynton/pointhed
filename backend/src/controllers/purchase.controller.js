@@ -318,6 +318,7 @@ export const createPurchase = async (req, res) => {
                   {
                     type: 'button',
                     sub_type: 'quick_reply',
+                    index: '0',
                     parameters: [
                       { type: 'payload', payload: `menu_${tenantId}` }
                     ]
