@@ -732,10 +732,6 @@ async function handleIncomingMessage(message, metadata) {
           console.error('❌ Error showing rewards page:', error);
         }
         return;
-      } else if (selectedItem === 'rewards' || selectedItemNormalized.includes('reward')) {
-        message.text = { body: 'rewards' };
-        message.type = 'text';
-        // Fall through to text handling
       } else if (selectedItem && selectedItem.toString().startsWith('reward_')) {
         try {
           const rewardId = selectedItem.split('_').slice(1).join('_');
@@ -797,6 +793,10 @@ async function handleIncomingMessage(message, metadata) {
           console.error('❌ Error handling reward selection:', error);
         }
         return;
+      } else if (selectedItem === 'rewards' || selectedItemNormalized === 'rewards') {
+        message.text = { body: 'rewards' };
+        message.type = 'text';
+        // Fall through to text handling
       } else if (selectedItem === 'switch' || selectedItemNormalized.includes('switch') || selectedItemNormalized.includes('business')) {
         message.text = { body: 'businesses' };
         message.type = 'text';

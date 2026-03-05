@@ -293,45 +293,7 @@ export const createPurchase = async (req, res) => {
               await sendWhatsAppMessage({ phoneNumber: customer.phoneNumber, message: fallback });
             }
 
-            // Send points_update template for balance change
-            try {
-              const newBalance = result.pointsBalance?.currentBalance ?? balanceRecord?.currentBalance ?? 0;
-              const pointsUpdateResult = await sendTemplateMessage({
-                phoneNumber: customer.phoneNumber,
-                templateName: 'points_update',
-                language: 'en',
-                components: [
-                  {
-                    type: 'header',
-                    parameters: [
-                      { type: 'text', text: tenantInfo.businessName }
-                    ]
-                  },
-                  {
-                    type: 'body',
-                    parameters: [
-                      { type: 'text', text: adjustmentText },
-                      { type: 'text', text: reasonText },
-                      { type: 'text', text: String(newBalance) }
-                    ]
-                  },
-                  {
-                    type: 'button',
-                    sub_type: 'quick_reply',
-                    index: '0',
-                    parameters: [
-                      { type: 'payload', payload: `menu_${tenantId}` }
-                    ]
-                  }
-                ]
-              });
 
-              if (!pointsUpdateResult?.success) {
-                console.error('❌ points_update template send failed:', pointsUpdateResult?.error || pointsUpdateResult?.status);
-              }
-            } catch (err) {
-              console.error('❌ Error sending points_update template:', err);
-            }
           } else if (isBlocked) {
             // Customer is blocked
             const blockedMessage = `📝 Purchase Recorded\n\nYour purchase of ${formatCurrency(amountNgn, tenantInfo.homeCurrency || 'NGN')} at ${tenantInfo.businessName} has been recorded.\n\n⚠️ Your account is currently blocked, so no points were awarded. Please contact the business for assistance.`;

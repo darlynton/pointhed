@@ -38,6 +38,11 @@ server-*.log
 *.pid
 backend_pid.txt
 
+# Flow keys (environment-specific, never commit)
+backend/flow_private_key.pem
+backend/flow_public_key.pem
+flow_*.pem
+
 # OS files
 .DS_Store
 Thumbs.db
