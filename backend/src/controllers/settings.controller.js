@@ -97,7 +97,7 @@ export const getSettings = async (req, res) => {
         pointValue,  // e.g., 10 for NGN at 1%, 0.01 for GBP at 1%
         
         // Welcome bonus
-        welcomeBonusEnabled: settings.welcome_bonus_enabled ?? true,
+        welcomeBonusEnabled: settings.welcome_bonus_enabled ?? false,
         welcomeBonusPoints: settings.welcome_bonus_points ?? DEFAULT_WELCOME_BONUS,
         
         // Minimum reward value
@@ -395,7 +395,7 @@ export const updateSettings = async (req, res) => {
           timezone: updatedTenant.timezone || null,
         },
         loyalty: {
-          welcomeBonusEnabled: settings.welcome_bonus_enabled ?? true,
+          welcomeBonusEnabled: settings.welcome_bonus_enabled ?? false,
           welcomeBonusPoints: settings.welcome_bonus_points ?? 50,
           pointsPerNaira: settings.points_per_naira ?? 1,
           majorUnitsPerPoint: (

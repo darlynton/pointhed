@@ -461,7 +461,28 @@ export function RewardsTab() {
         return;
       }
 
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      // Prefer rear camera on mobile for QR scanning; gracefully fallback when unavailable
+      let stream: MediaStream;
+      try {
+        // Strong preference: exact environment (rear) camera
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { exact: 'environment' }
+          }
+        });
+      } catch (camErr) {
+        try {
+          // Softer preference when exact is unsupported
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: {
+              facingMode: { ideal: 'environment' }
+            }
+          });
+        } catch (camErr2) {
+          // Final fallback for browsers/devices that don't support facingMode constraints
+          stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        }
+      }
       if (scanSessionRef.current !== sessionId) {
         stream.getTracks().forEach(t => t.stop());
         return;
@@ -521,6 +542,7 @@ export function RewardsTab() {
           handleQuickVerify(code);
         },
         {
+          preferredCamera: 'environment',
           returnDetailedScanResult: true,
           highlightScanRegion: true,
           highlightCodeOutline: true,
@@ -529,6 +551,12 @@ export function RewardsTab() {
       );
       scanInstanceRef.current = scanner;
       await scanner.start();
+      // Some mobile browsers ignore preferredCamera on first start; force switch to rear when possible
+      try {
+        await scanner.setCamera('environment');
+      } catch (e) {
+        // ignore camera switch errors
+      }
     } catch (e: any) {
       setScanError(e?.message || 'Unable to access camera.');
       setScanStatus('');

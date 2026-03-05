@@ -134,6 +134,7 @@ export const vendorSignup = async (req, res) => {
             state: state || null,
             country: country || 'Nigeria',
             burn_rate: 0.01,  // 1% default burn rate
+            welcome_bonus_enabled: false, // Vendor must explicitly enable welcome bonus
             welcome_bonus_points: 10,  // Default 10 points
             min_reward_value: 500  // Default for NGN
           }
@@ -300,6 +301,7 @@ export const vendorProvisionFromSupabase = async (req, res) => {
             state: state || null,
             country: country || 'Nigeria',
             burn_rate: 0.01,  // 1% default burn rate
+            welcome_bonus_enabled: false, // Vendor must explicitly enable welcome bonus
             welcome_bonus_points: 10,  // Default 10 points
             min_reward_value: getMinRewardForCurrency(homeCurrency || 'NGN')  // Currency-aware default
           }
