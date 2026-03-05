@@ -6,14 +6,22 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Load the private key
+// Load the private key from file or environment variable
 const privateKeyPath = path.join(__dirname, '../../flow_private_key.pem');
 let privateKey;
 
-try {
-  privateKey = fs.readFileSync(privateKeyPath, 'utf8');
-} catch (error) {
-  console.error('⚠️  Flow private key not found. Flow signature verification disabled.');
+// Try loading from environment variable first (production)
+if (process.env.WHATSAPP_FLOW_PRIVATE_KEY) {
+  privateKey = process.env.WHATSAPP_FLOW_PRIVATE_KEY;
+  console.log('✅ Flow private key loaded from WHATSAPP_FLOW_PRIVATE_KEY environment variable');
+} else {
+  // Fall back to file (development)
+  try {
+    privateKey = fs.readFileSync(privateKeyPath, 'utf8');
+    console.log('✅ Flow private key loaded from file');
+  } catch (error) {
+    console.warn('⚠️  Flow private key not found in file or environment. Flow signature verification disabled.');
+  }
 }
 
 /**
