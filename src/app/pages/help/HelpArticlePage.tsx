@@ -1,9 +1,11 @@
 import { Link, useParams, Navigate } from 'react-router-dom';
-import { ArrowLeft, Clock, ChevronRight } from 'lucide-react';
+import { Clock, ChevronRight } from 'lucide-react';
 import { HelpSearch } from '../../components/help/HelpSearch';
 import { HelpBreadcrumb } from '../../components/help/HelpBreadcrumb';
 import { ArticleContent } from '../../components/help/ArticleContent';
-import { getArticle, getCategoryBySlug } from '../../../lib/helpContent';
+import { getArticle } from '../../../lib/helpContent';
+import { PublicNav } from '../../components/PublicNav';
+import { PublicFooter } from '../../components/PublicFooter';
 
 export default function HelpArticlePage() {
   const { categorySlug, articleSlug } = useParams<{ categorySlug: string; articleSlug: string }>();
@@ -20,31 +22,7 @@ export default function HelpArticlePage() {
 
   return (
     <div className="min-h-screen bg-[#FAFAFA]" style={{ fontFamily: "'Bricolage Grotesque', system-ui, sans-serif" }}>
-      {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-[#FAFAFA]/80 backdrop-blur-md border-b border-black/5">
-        <div className="max-w-7xl mx-auto px-6 lg:px-12">
-          <div className="flex items-center justify-between h-16 lg:h-20">
-            <Link to="/">
-              <img src="/uploads/logo.png" alt="Pointhed" className="h-5 w-auto" />
-            </Link>
-            <div className="flex items-center gap-6">
-              <Link
-                to={`/help/${category.slug}`}
-                className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 transition-colors"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                <span className="hidden sm:inline">{category.title}</span>
-              </Link>
-              <Link
-                to="/login"
-                className="text-sm font-medium px-5 py-2.5 bg-[#264EFF] text-white rounded-full hover:bg-[#1a3ed9] transition-colors"
-              >
-                Sign in
-              </Link>
-            </div>
-          </div>
-        </div>
-      </nav>
+      <PublicNav />
 
       {/* Article */}
       <main className="pt-32 lg:pt-36 pb-24 px-6 lg:px-12">
@@ -133,24 +111,7 @@ export default function HelpArticlePage() {
         </div>
       </main>
 
-      {/* Footer */}
-      <footer className="py-12 px-6 lg:px-12 bg-gray-900 text-white">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col lg:flex-row items-center justify-between gap-6">
-            <div>
-              <img src="/uploads/logo-white.png" alt="Pointhed" className="h-5 w-auto" />
-            </div>
-            <div className="flex items-center gap-8 text-sm text-gray-400">
-              <Link to="/help" className="hover:text-white transition-colors">Help Center</Link>
-              <Link to="/privacy-policy" className="hover:text-white transition-colors">Privacy Policy</Link>
-              <Link to="/terms-of-service" className="hover:text-white transition-colors">Terms of Service</Link>
-            </div>
-            <p className="text-sm text-gray-500">
-              © {new Date().getFullYear()} Pointhed. All rights reserved.
-            </p>
-          </div>
-        </div>
-      </footer>
+      <PublicFooter />
 
       <style>{`
         .font-sora { font-family: 'Sora', system-ui, sans-serif; }

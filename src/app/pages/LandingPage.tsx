@@ -1,11 +1,12 @@
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Check, CheckCheck, Globe, LayoutDashboard, Menu, MessageCircle, ShoppingBag, Smartphone, TrendingUp, X, Zap } from 'lucide-react';
+import { ArrowRight, Check, CheckCheck, Globe, LayoutDashboard, MessageCircle, ShoppingBag, Smartphone, TrendingUp, Zap } from 'lucide-react';
+import { PublicNav } from '../components/PublicNav';
+import { PublicFooter } from '../components/PublicFooter';
 
 export default function LandingPage() {
 
   // Intersection observer for scroll animations
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [visibleSections, setVisibleSections] = useState<Set<string>>(new Set());
   const observerRef = useRef<IntersectionObserver | null>(null);
 
@@ -32,73 +33,7 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-[#FAFAFA]" style={{ fontFamily: "'Bricolage Grotesque', system-ui, sans-serif" }}>
-      {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-[#FAFAFA]/80 backdrop-blur-md border-b border-black/5">
-        <div className="max-w-7xl mx-auto px-6 lg:px-12">
-          <div className="flex items-center justify-between h-16 lg:h-20">
-            <div>
-              <img src="/uploads/logo.png" alt="Pointhed" className="h-5 w-auto" />
-            </div>
-            <div className="flex items-center gap-6">
-              {/* Desktop links */}
-              <Link 
-                to="/help" 
-                className="text-sm text-gray-600 hover:text-gray-900 transition-colors hidden sm:block"
-              >
-                Help
-              </Link>
-              <Link 
-                to="/login" 
-                className="text-sm text-gray-600 hover:text-gray-900 transition-colors hidden sm:block"
-              >
-                Sign in
-              </Link>
-              <Link 
-                to="/signup"
-                className="text-sm font-medium px-5 py-2.5 bg-[#264EFF] text-white rounded-full hover:bg-[#1a3ed9] transition-colors hidden sm:block"
-              >
-                Get started
-              </Link>
-              {/* Mobile hamburger */}
-              <button
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="sm:hidden p-2 -mr-2 text-gray-600 hover:text-gray-900 transition-colors"
-                aria-label="Toggle menu"
-              >
-                {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-              </button>
-            </div>
-          </div>
-        </div>
-        {/* Mobile dropdown */}
-        {mobileMenuOpen && (
-          <div className="sm:hidden bg-[#FAFAFA]/95 backdrop-blur-md border-t border-black/5">
-            <div className="px-6 py-4 flex flex-col gap-3">
-              <Link
-                to="/help"
-                onClick={() => setMobileMenuOpen(false)}
-                className="text-sm text-gray-600 hover:text-gray-900 transition-colors py-2"
-              >
-                Help Center
-              </Link>
-              <Link
-                to="/login"
-                onClick={() => setMobileMenuOpen(false)}
-                className="text-sm text-gray-600 hover:text-gray-900 transition-colors py-2"
-              >
-                Sign in
-              </Link>
-              <Link
-                to="/signup"
-                onClick={() => setMobileMenuOpen(false)}
-                className="text-sm font-medium px-5 py-2.5 bg-[#264EFF] text-white rounded-full hover:bg-[#1a3ed9] transition-colors text-center"
-              >
-                Get started
-              </Link>
-            </div>
-          </div>
-        )}
-      </nav>
+      <PublicNav />
 
       {/* Hero Section */}
       <section className="pt-40 lg:pt-56 pb-32 lg:pb-48 px-6 lg:px-12 relative overflow-hidden">
@@ -537,24 +472,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="py-12 px-6 lg:px-12 bg-gray-900 text-white">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col lg:flex-row items-center justify-between gap-6">
-            <div>
-              <img src="/uploads/logo-white.png" alt="Pointhed" className="h-5 w-auto" />
-            </div>
-            <div className="flex items-center gap-4 sm:gap-8 text-sm text-gray-400">
-              <Link to="/help" className="hover:text-white transition-colors">Help Center</Link>
-              <Link to="/privacy-policy" className="hover:text-white transition-colors">Privacy Policy</Link>
-              <Link to="/terms-of-service" className="hover:text-white transition-colors">Terms of Service</Link>
-            </div>
-            <p className="text-sm text-gray-500">
-              © {new Date().getFullYear()} Pointhed. All rights reserved.
-            </p>
-          </div>
-        </div>
-      </footer>
+      <PublicFooter />
 
       {/* Global Styles */}
       <style>{`
