@@ -14,6 +14,9 @@ const TestCurrencyPage = lazy(() => import('./pages/TestCurrencyPage'));
 const LandingPage = lazy(() => import('./pages/LandingPage'));
 const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage'));
 const TermsOfServicePage = lazy(() => import('./pages/TermsOfServicePage'));
+const HelpCenterPage = lazy(() => import('./pages/help/HelpCenterPage'));
+const HelpCategoryPage = lazy(() => import('./pages/help/HelpCategoryPage'));
+const HelpArticlePage = lazy(() => import('./pages/help/HelpArticlePage'));
 const DashboardLayout = lazy(() => import('./components/DashboardLayout').then((m) => ({ default: m.DashboardLayout })));
 const OverviewTab = lazy(() => import('./components/vendor/OverviewTab').then((m) => ({ default: m.OverviewTab })));
 const CustomersTab = lazy(() => import('./components/vendor/CustomersTab').then((m) => ({ default: m.CustomersTab })));
@@ -122,6 +125,9 @@ export default function App() {
             <Route path="/" element={<LandingPage />} />
             <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
             <Route path="/terms-of-service" element={<TermsOfServicePage />} />
+            <Route path="/help" element={<HelpCenterPage />} />
+            <Route path="/help/:categorySlug" element={<HelpCategoryPage />} />
+            <Route path="/help/:categorySlug/:articleSlug" element={<HelpArticlePage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignupPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
