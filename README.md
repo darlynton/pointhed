@@ -1,6 +1,6 @@
 # Pointhed - WhatsApp Loyalty Platform
 
-> A complete multi-tenant WhatsApp-based customer loyalty platform for Nigerian businesses
+> A complete multi-tenant WhatsApp-based customer loyalty platform for businesses
 
 ![Platform Overview](https://img.shields.io/badge/Platform-Production%20Ready-green)
 ![Tech Stack](https://img.shields.io/badge/Stack-Node.js%20%7C%20PostgreSQL%20%7C%20React-blue)
